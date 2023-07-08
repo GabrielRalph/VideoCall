@@ -1,8 +1,8 @@
-export function joinAsHost(sda) {
+export function joinAsHost(sdp) {
 
 }
 
-export function joinAsParticipant(sda) {
+export function joinAsParticipant(sdp) {
 
 }
 

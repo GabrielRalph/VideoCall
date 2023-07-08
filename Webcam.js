@@ -18,6 +18,7 @@ let processListeners = [];
 
 Video.setAttribute("autoplay", "true");
 Video.setAttribute("playsinline", "true");
+Video.toggleAttribute("muted", true);
 
 // ~~~~~~~~ HELPFULL METHODS ~~~~~~~~
 async function parallel() {

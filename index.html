@@ -10,10 +10,10 @@
         Start Webcam
       </button>
       <div>
-        <button id = "b1">Join as Host</button>: <input id = "i1" />
+        <button id = "b1">Join as Host</button>: <input id = "i1" placeholder="SDP" />
       </div>
       <div>
-        <button id = "b2">Join as Participant</button>: <input id = "i2" />
+        <button id = "b2">Join as Participant</button>: <input id = "i2" placeholder="SDP" />
       </div>
     </div>
     <div id = "video-call-element">
@@ -38,8 +38,10 @@
         swc.innerHTML = "Start Webcam";
       } else {
         if (await Webcam.startWebcam()) {
-          // Set VideoCall module's media stream
+
+          // Set VideoCall module's media stream to the Webcam module's stream.
           VideoCall.setStream(Webcam.getStream());
+
           swc.innerHTML = "Stop Webcam"
         } else {
           alert("Webcam is not accessible.")
