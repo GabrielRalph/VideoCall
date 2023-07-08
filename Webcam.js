@@ -1,4 +1,11 @@
-const camParams = { video: { width: { min: 320, ideal: 640, max: 1920 }, height: { min: 240, ideal: 480, max: 1080 }, facingMode: "user" } };
+const camParams = {
+  video: {
+    width: { min: 320, ideal: 640, max: 1920 },
+    height: { min: 240, ideal: 480, max: 1080 },
+    facingMode: "user",
+  },
+  audio: true,
+};
 let Canvas = document.createElement("canvas");
 let Ctx = Canvas.getContext("2d", {willReadFrequently: true});
 let Video = document.createElement("video");

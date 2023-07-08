@@ -10,6 +10,6 @@ export function setElement(htmlElement) {
 
 }
 
-export function setMediaStream(stream) {
+export function setStream(stream) {
 
 }
