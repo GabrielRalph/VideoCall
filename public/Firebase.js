@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-import { getDatabase, ref, get, child, onValue, onChildAdded, set } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+import { getDatabase, ref, get, child, onValue, onChildAdded, onChildRemoved, set, remove } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC0x1FHXHnonMUgy-weYwCQ12C2XIGp9bw",
@@ -23,7 +23,7 @@ const getRefFromDb = (address) => {
 }
 
 const getMeeting = async (meetingId) => {
-  return get(child(dbRef, `meetings/${meetingId}`));
+  return await get(child(dbRef, `meetings/${meetingId}`));
 }
 
-export {app, db, dbRef, getRefFromDb, getMeeting, onValue, onChildAdded, get, set, child};
+export {app, db, dbRef, getRefFromDb, getMeeting, onValue, onChildAdded, onChildRemoved, get, set, remove, child};

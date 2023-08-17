@@ -1,5 +1,5 @@
 import { configuration } from "./Config.js";
-import { getRefFromDb, getMeeting, dbRef, get, set, child, onValue, onChildAdded } from "./Firebase.js";
+import { getRefFromDb, getMeeting, dbRef, get, set, child, onValue, onChildAdded, onChildRemoved, remove } from "./Firebase.js";
 import { eventListenerGen, randomString } from "./misc.js";
 
 let peerConnection = null;
@@ -9,13 +9,20 @@ let remoteStream = null;
 // create meeting id as a random string of length 10
 let meetingId = randomString(10);
 
+let isParticipant = false;
+
+function hideElement(elementId) {
+  document.getElementById(elementId).style.display = "none";
+}
+
 // initialise button listeners
 function init() {
   eventListenerGen('#cameraBtn', openUserMedia);
   eventListenerGen('#leaveBtn', leaveMeeting);
   eventListenerGen('#createBtn', createMeeting);
   eventListenerGen('#joinBtn', joinMeeting);
-  document.getElementById("joinDialog").style.display = "none";
+  hideElement("joinDialog");
+  hideElement("connectingView");
 }
 
 // create meeting
@@ -53,16 +60,17 @@ async function createMeeting() {
   await peerConnection.setLocalDescription(offer);
   console.log('Created offer:', offer);
 
-  let rtdbOfferRef = await getRefFromDb('meetings/' + meetingId + '/offer');
+  let rtdbOfferRef = getRefFromDb(`meetings/${meetingId}/offer`);
 
-  const meetingWithOffer = {
+  const meetingOffer = {
     type: offer.type,
     sdp: offer.sdp,
   };
 
-  await set(rtdbOfferRef, meetingWithOffer);
+  await set(rtdbOfferRef, meetingOffer);
 
   console.log(`New meeting created with SDP offer. meeting ID: ${meetingId}`);
+
   document.querySelector(
       '#currentMeeting').innerText = `Meeting ID: ${meetingId} - You are the host!`;
 
@@ -74,12 +82,16 @@ async function createMeeting() {
     });
   });
 
+  let answerRef = getRefFromDb(`meetings/${meetingId}/answer`);
+
   // Listening for remote session description
-  onValue(meetingRef, async (snapshot) => {
+  onValue(answerRef, async (snapshot) => {
     const data = snapshot.val();
-    if (!peerConnection.currentRemoteDescription && data && data.answer) {
-      console.log('Got remote description: ', data.answer);
-      const rtcSessionDescription = new RTCSessionDescription(data.answer);
+    
+    // if (!peerConnection.currentRemoteDescription && data) {
+    if (data) {
+      console.log('Got remote description: ', data);
+      const rtcSessionDescription = new RTCSessionDescription(data);
       await peerConnection.setRemoteDescription(rtcSessionDescription);
     }
   })
@@ -87,10 +99,16 @@ async function createMeeting() {
   // Listen for remote ICE candidates
   let rtdbParticipantCandidatesRef = getRefFromDb(`meetings/${meetingId}/participantCandidates`);
   onChildAdded(rtdbParticipantCandidatesRef, async (snapshot) => {
-      let data = snapshot.val();
-      console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+    let data = snapshot.val();
+    console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+    await peerConnection.addIceCandidate(new RTCIceCandidate(data));
   })
+
+  // onChildRemoved(rtdbParticipantCandidatesRef, async (snapshot) => {
+  //   let data = snapshot.val();
+  //   console.log(`Removed remote ICE candidate: ${JSON.stringify(data)}`);
+  //   await peerConnection.removeIceCandidate(new RTCIceCandidate(data));
+  // })
 }
 
 function joinMeeting() {
@@ -116,72 +134,81 @@ function joinMeeting() {
 }
 
 async function joinMeetingById(meetingId) {
-  getMeeting(meetingId).then(async (snapshot) => {
-    console.log('Got meeting:', snapshot.exists);
+  let snapshot = await getMeeting(meetingId);
 
-    if (snapshot.exists) {
-      console.log('Create PeerConnection with configuration: ', configuration);
-      peerConnection = new RTCPeerConnection(configuration);
-      registerPeerConnectionListeners();
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
-  
-      // collecting ICE candidates
-      peerConnection.addEventListener('icecandidate', event => {
-        if (!event.candidate) {
-          console.log('Got final candidate!');
-          return;
-        }
-        console.log('Got candidate: ', event.candidate);
-        let participantId = randomString(8);
-        const rtdbParticipantCandidateRef = getRefFromDb(`meetings/${meetingId}/participantCandidates/${participantId}`);
-        set(rtdbParticipantCandidateRef, event.candidate.toJSON());
-      });
-  
-      peerConnection.addEventListener('track', event => {
-        console.log('Got remote track:', event.streams[0]);
-        event.streams[0].getTracks().forEach(track => {
-          console.log('Add a track to the remoteStream:', track);
-          remoteStream.addTrack(track);
-        });
-      });
-  
-      // creating SDP answer
-      const offer = get(child(dbRef, `meetings/${meetingId}/offer`)).then(async (snapshot) => {
-        if (snapshot.exists()) {
-          let data = snapshot.val();
-          console.log('Got offer:', data);
+  document.getElementById("joinDialog").style.display = "none";
+  document.getElementById("connectingView").style.display = "block";
+  console.log('Got meeting:', snapshot.exists());
 
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-          const answer = await peerConnection.createAnswer();
-          console.log('Created answer:', answer);
-          await peerConnection.setLocalDescription(answer);
-      
-          let meetingWithAnswerRef = getRefFromDb(`meetings/${meetingId}/answer`);
-      
-          const meetingWithAnswer = {
-              type: answer.type,
-              sdp: answer.sdp,
-          };
-      
-          await set(meetingWithAnswerRef, meetingWithAnswer);
-        } else {
-          console.log("No data available");
-        };
-      })
+  if (snapshot.exists()) {
+    console.log('Create PeerConnection with configuration: ', configuration);
+    peerConnection = new RTCPeerConnection(configuration);
+    registerPeerConnectionListeners();
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
   
-      // Listening for remote ICE candidates
-      let rtdbHostCandidatesRef = getRefFromDb(`meetings/${meetingId}/hostCandidates`);
+    // collecting ICE candidates
+    peerConnection.addEventListener('icecandidate', event => {
+      if (!event.candidate) {
+        console.log('Got final candidate!');
+        return;
+      }
+      console.log('Got candidate: ', event.candidate);
+      let participantCandidateId = randomString(8);
+      const rtdbParticipantCandidateRef = getRefFromDb(`meetings/${meetingId}/participantCandidates/${participantCandidateId}`);
+      set(rtdbParticipantCandidateRef, event.candidate.toJSON());
+    });
   
-      onChildAdded(rtdbHostCandidatesRef, async (snapshot) => {
-        let data = snapshot.val();
-        console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+    peerConnection.addEventListener('track', event => {
+      console.log('Got remote track:', event.streams[0]);
+      event.streams[0].getTracks().forEach(track => {
+        console.log('Add a track to the remoteStream:', track);
+        remoteStream.addTrack(track);
       });
-    }
-  })
+    });
+
+    
   
+    // creating SDP answer
+    // const offerSnapshot = await get(child(dbRef, `meetings/${meetingId}/offer`));
+
+    // if (offerSnapshot.exists()) {
+      let data = snapshot.val().offer;
+      console.log('Got offer:', data);
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+
+      // peer connection answer is not cleared properly
+      const answer = await peerConnection.createAnswer();
+      console.log('Created answer:', answer);
+      await peerConnection.setLocalDescription(answer);
+  
+      let meetingWithAnswerRef = getRefFromDb(`meetings/${meetingId}/answer`);
+  
+      const meetingWithAnswer = {
+          type: answer.type,
+          sdp: answer.sdp,
+      };
+  
+      await set(meetingWithAnswerRef, meetingWithAnswer);
+    // } else {
+    //   console.log("No data available");
+    // };
+  
+    // Listening for remote ICE candidates
+    let rtdbHostCandidatesRef = getRefFromDb(`meetings/${meetingId}/hostCandidates`);
+
+    onChildAdded(rtdbHostCandidatesRef, async (snapshot) => {
+      let data = snapshot.val();
+      console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+
+      document.getElementById("connectingView").style.display = "none";
+
+      isParticipant = true;
+    });
+  }
 }
 
 async function openUserMedia(e) {
@@ -199,11 +226,57 @@ async function openUserMedia(e) {
   document.querySelector('#leaveBtn').disabled = false;
 }
 
-async function leaveMeeting(e) {
+function stopLocalTracks() {
   const tracks = document.querySelector('#localVideo').srcObject.getTracks();
   tracks.forEach(track => {
     track.stop();
   });
+}
+
+// cleanup elements for fresh start
+function cleanupAfterLeaving() {
+  document.querySelector('#localVideo').srcObject = null;
+  document.querySelector('#remoteVideo').srcObject = null;
+  document.querySelector('#cameraBtn').disabled = false;
+  document.querySelector('#joinBtn').disabled = true;
+  document.querySelector('#createBtn').disabled = true;
+  document.querySelector('#leaveBtn').disabled = true;
+  document.querySelector('#currentMeeting').innerText = '';
+}
+
+// remove ref at a particular address
+async function removeRefAt(address) {
+  const givenRef = getRefFromDb(address);
+  await remove(givenRef);
+}
+
+// leave a meeting
+async function leaveMeeting(e) {
+  console.log(isParticipant);
+
+  if (isParticipant) {
+    participantLeavesMeeting(e)
+  } else {
+    hostLeavesMeeting(e);
+  }
+}
+
+// participant leaves meeting
+async function participantLeavesMeeting(e) {
+  stopLocalTracks();
+
+  cleanupAfterLeaving();
+
+  // delete candidates and answer on hangup
+  if (meetingId) await removeRefAt(`meetings/${meetingId}/participantCandidates`);
+  if (meetingId) await removeRefAt(`meetings/${meetingId}/answer`);
+
+  document.location.reload(true);
+}
+
+// host leaves a meeting
+async function hostLeavesMeeting(e) {
+  stopLocalTracks();
 
   if (remoteStream) {
     remoteStream.getTracks().forEach(track => track.stop());
@@ -213,20 +286,10 @@ async function leaveMeeting(e) {
     peerConnection.close();
   }
 
-  // cleanup elements for fresh start
-  document.querySelector('#localVideo').srcObject = null;
-  document.querySelector('#remoteVideo').srcObject = null;
-  document.querySelector('#cameraBtn').disabled = false;
-  document.querySelector('#joinBtn').disabled = true;
-  document.querySelector('#createBtn').disabled = true;
-  document.querySelector('#leaveBtn').disabled = true;
-  document.querySelector('#currentMeeting').innerText = '';
+  cleanupAfterLeaving();
 
   // delete meeting on hangup
-  if (meetingId) {
-    const meetingRef = getRefFromDb('meetings/' + meetingId);
-    await remove(meetingRef);
-  }
+  if (meetingId) await removeRefAt(`meetings/${meetingId}`);
 
   document.location.reload(true);
 }
@@ -239,7 +302,18 @@ function registerPeerConnectionListeners() {
   });
 
   peerConnection.addEventListener('connectionstatechange', () => {
-    console.log(`Connection state change: ${peerConnection.connectionState}`);
+    let connectionState = peerConnection.connectionState;
+    console.log(`Connection state change: ${connectionState}`);
+
+    // if connection 'disconnected'
+    if (connectionState === 'disconnected') {
+      document.querySelector('#remoteVideo').srcObject = null;
+    }
+
+    // if connection 'failed'
+    // if (connectionState === 'failed') {
+    //   // peerConnection.
+    // }
   });
 
   peerConnection.addEventListener('signalingstatechange', () => {

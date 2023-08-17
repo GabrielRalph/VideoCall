@@ -35,7 +35,7 @@
      aria-modal="true"
      aria-labelledby="my-dialog-title"
      aria-describedby="my-dialog-content">
-    <div id="joinDialog" class="mdc-dialog__container dialog-container">
+    <div id="joinDialog" class="mdc-dialog__container std-container dialog-container">
         <div class="mdc-dialog__surface">
             <h2 class="mdc-dialog__title" id="my-dialog-title">Join meeting</h2>
             <div class="mdc-dialog__content" id="my-dialog-content">
@@ -53,6 +53,13 @@
                 </button>
             </footer>
         </div>
+    </div>
+    <div id="connectingView" class="mdc-dialog__container std-container connecting-container">
+      <div class="mdc-dialog__surface">
+          <div class="mdc-dialog__content centered" id="my-dialog-content">
+              <p>Connecting...</p>
+          </div>
+      </div>
     </div>
     <div class="mdc-dialog__scrim"></div>
   </div>
