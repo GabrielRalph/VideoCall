@@ -42,6 +42,7 @@ pc.ontrack = ({ track, streams }) => {
     if (remoteVideo.srcObject) {
       return;
     }
+    console.log("track set");
     remoteVideo.srcObject = streams[0];
   };
 };
@@ -68,8 +69,10 @@ pc.oniceconnectionstatechange = () => {
     pc.restartIce();
   } else if (pc.iceConnectionState === "disconnected") {
     remoteVideo.srcObject = null;
-    pc.restartIce();
-    
+    if (!signaler.polite) {
+      pc.restartIce();
+    }
+
   }
 };
 

@@ -42,8 +42,13 @@
     // VideoCall.setElement(vce);
 
     b1.onclick = async () => {
-      let key = await signaler.make();
       if (await Webcam.startWebcam()) {
+        let key = i1.value;
+        if (key.length < 2) {
+          key = await signaler.make();
+        } else {
+          await signaler.join(key, false);
+        }
         VideoCall.start(v1, v2, Webcam.getStream())
         i1.value = key;
       } else {
