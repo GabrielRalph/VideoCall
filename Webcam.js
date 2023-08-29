@@ -18,7 +18,10 @@ let processListeners = [];
 
 Video.setAttribute("autoplay", "true");
 Video.setAttribute("playsinline", "true");
-Video.toggleAttribute("muted", true);
+Video.muted = true;
+Video.onunmute = () => {
+  console.log('xx');
+}
 
 // ~~~~~~~~ HELPFULL METHODS ~~~~~~~~
 async function parallel() {
@@ -126,6 +129,7 @@ export async function startWebcam(params = camParams){
       };
       Video.addEventListener("loadeddata", onload);
     });
+    return true
   } catch (e) {
     console.log(e);
     webcam_on = false;
