@@ -13,24 +13,70 @@ const config = {
 
 export const signaler = new SignalingChannel();
 const pc = new RTCPeerConnection(config);
+pc.ondatachannel = receiveChannelCallback;
 
-let selfVideo = null;
-let remoteVideo = null;
+let onUpdateHandler = () => {};
+function updateHandler(update){
+  onUpdateHandler(update);
+};
+let sendChannel;
+let receiveChannel;
 
-export function start(svid, rvid, stream) {
-  selfVideo = svid;
-  remoteVideo = rvid;
+function receiveChannelCallback(event) {
+  receiveChannel = event.channel;
+  receiveChannel.onmessage = handleReceiveMessage;
+  receiveChannel.onopen = handleReceiveChannelStatusChange;
+  receiveChannel.onclose = handleReceiveChannelStatusChange;
+}
+function handleReceiveMessage(event) {
+  let update = {
+    data: event.data,
+  }
+  updateHandler(update);
+  console.log(event.data);
+}
+
+
+function sendMessage(message) {
+  if (sendChannel && sendChannel.readyState == "open") {
+    sendChannel.send(message);
+  }
+}
+function handleReceiveChannelStatusChange(event) {
+  if (receiveChannel) {
+    let update = {
+      receive_data_channel_state: receiveChannel.readyState,
+    }
+    updateHandler(update);
+    console.log(
+      `Receive channel's status has changed to ${receiveChannel.readyState}`,
+    );
+  }
+}
+function handleSendChannelStatusChange(event) {
+  if (sendChannel) {
+    const state = sendChannel.readyState;
+    let update = {
+      send_data_channel_state: state,
+    }
+    updateHandler(update)
+  }
+}
+
+function startMessageChannel(){
+  sendChannel = pc.createDataChannel("sendChannel");
+  sendChannel.onopen = handleSendChannelStatusChange;
+  sendChannel.onclose = handleSendChannelStatusChange;
+}
+
+export function start(onupdate, stream) {
   if (signaler.key) {
-    // try {
-      // const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (onupdate instanceof Function) onUpdateHandler = onupdate;
 
-      for (const track of stream.getTracks()) {
-        pc.addTrack(track, stream);
-      }
-      selfVideo.srcObject = stream;
-    // } catch (err) {
-    //   console.error(err);
-    // }
+    console.log(window.location.origin + "/?" + signaler.key);
+    for (const track of stream.getTracks()) {
+      pc.addTrack(track, stream);
+    }
   } else {
     console.log("signal server not connected");
   }
@@ -39,11 +85,10 @@ export function start(svid, rvid, stream) {
 pc.ontrack = ({ track, streams }) => {
   console.log("track received");
   track.onunmute = () => {
-    if (remoteVideo.srcObject) {
-      return;
-    }
-    console.log("track set");
-    remoteVideo.srcObject = streams[0];
+    let update = {
+      remote_stream: streams[0],
+    };
+    updateHandler(update);
   };
 };
 
@@ -64,15 +109,20 @@ pc.onnegotiationneeded = async () => {
 };
 
 pc.oniceconnectionstatechange = () => {
+  let update = {
+    negotiation_state: pc.iceConnectionState
+  }
+  updateHandler(update);
   console.log(pc.iceConnectionState);
   if (pc.iceConnectionState === "failed") {
     pc.restartIce();
+  } else if (pc.iceConnectionState == "connected"){
+    startMessageChannel();
   } else if (pc.iceConnectionState === "disconnected") {
-    remoteVideo.srcObject = null;
-    if (!signaler.polite) {
-      pc.restartIce();
-    }
-
+    // remoteVideo.srcObject = null;
+    // if (!signaler.polite) {
+    //   pc.restartIce();
+    // }
   }
 };
 
