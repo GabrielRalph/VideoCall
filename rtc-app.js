@@ -19,6 +19,19 @@ function getQueryKey(string = window.location.search) {
   } catch(e){}
   return key;
 }
+let x = 0;
+let y = 0;
+let w = window.innerHeight;
+let h = window.innerWidth;
+let change_flag = false;
+window.onmousemove = (e) => {
+  x = e.x - window.innerWidth/2;
+  y = e.y - window.innerHeight/2;
+  w = window.innerWidth;
+  h = window.innerHeight;
+  change_flag = true;
+}
+
 class RTCApp extends SvgPlus {
   async onconnect(){
     let btns = {};
@@ -29,6 +42,29 @@ class RTCApp extends SvgPlus {
 
     this.vc = vc;
     this.vc.innerHTML = "";
+
+    this.fc = this.createChild("div", {style: {
+      position: "fixed",
+      width: "15px",
+      height: "15px",
+      "border-radius": "10px",
+      "border": "2px solid red",
+      transform: "translate(-50%, -50%)"
+
+    }})
+
+
+
+    let next = () => {
+      if (change_flag) {
+        VideoCall.sendMessage(JSON.stringify({x, y, w, h}));
+        change_flag = false;
+      }
+      window.requestAnimationFrame(next);
+    }
+    window.requestAnimationFrame(next);
+
+    // this.createChild("overlay")
     // let signaler = VideoCall.signaler;
     // VideoCall.setElement(vce);
 
@@ -63,10 +99,27 @@ class RTCApp extends SvgPlus {
   }
 
   onupdate(e) {
-    console.log(e);
+    // console.log(e);
+    if ("data" in e) {
+      let data = JSON.parse(e.data);
+      let nx = w/2 + w * data.x / data.w;
+      let ny = h/2 + h * data.y / data.h;
+      console.log(nx, ny);
+      this.fc.styles = {
+        top: ny + "px",
+        left: nx + "px",
+      }
+    }
     if ("remote_stream" in e) {
       if (this.v2.srcObject == null) {
         this.v2.srcObject = e.remote_stream;
+      }
+    }
+    if ("receive_data_channel_state" in e || "negotiation_state" in e) {
+      if (e.receive_data_channel_state == "closed" || e.negotiation_state == "disconnected") {
+        this.v2.remove();
+        this.v2.srcObject = null;
+      } else if (e.receive_data_channel_state == "open") {
         this.vc.appendChild(this.v2);
       }
     }

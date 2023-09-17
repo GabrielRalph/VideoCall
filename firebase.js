@@ -210,6 +210,19 @@ export class SignalingChannel {
 
   get polite() {return this.userType !== "host"}
 
+  clearInfo(key, user){
+    let candidateRef = getSessionRef(key, `${user}/candidates`);
+    let descriptionRef = getSessionRef(key, `${user}/description`);
+    set(candidateRef, null);
+    set(descriptionRef, null);
+  }
+
+  restart(){
+    let {key, userType} = this;
+    if (this._candidate_listener instanceof Function) this._candidate_listener();
+    if (this._description_listener instanceof Function) this._description_listener();
+    this._add_listeners(key, userType);
+  }
   _add_listeners(key, userType){
     // Unsubscribe any previous listeners
     this.leave();
@@ -236,12 +249,12 @@ export class SignalingChannel {
     if (init) {
       init = false;
       this._candidate_listener = onChildAdded(candidateRef, (sc) => {
+        let key = sc.key;
         this._message_handler({
           data:{
             candidate: new RTCIceCandidate(sc.val())
           }
         })
-
       });
       this._listening = true;
     }

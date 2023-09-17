@@ -12,8 +12,65 @@ const config = {
 };
 
 export const signaler = new SignalingChannel();
-const pc = new RTCPeerConnection(config);
-pc.ondatachannel = receiveChannelCallback;
+let pc;
+let makingOffer = false;
+function createPC(){
+  pc = new RTCPeerConnection(config);
+  pc.ondatachannel = receiveChannelCallback;
+
+  pc.ontrack = ({ track, streams }) => {
+    console.log("track received");
+    track.onunmute = () => {
+      let update = {
+        remote_stream: streams[0],
+      };
+      updateHandler(update);
+    };
+  };
+
+
+  pc.onnegotiationneeded = async () => {
+    console.log("negotiation needed");
+    try {
+      makingOffer = true;
+      await pc.setLocalDescription();
+      console.log("description --> " + pc.localDescription.type);
+      signaler.send({ description: pc.localDescription });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      makingOffer = false;
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    let update = {
+      negotiation_state: pc.iceConnectionState
+    }
+    updateHandler(update);
+    console.log(pc.iceConnectionState);
+    if (pc.iceConnectionState === "failed") {
+      pc.restartIce();
+    } else if (pc.iceConnectionState == "connected"){
+      // signaler.clearInfo();
+      startMessageChannel();
+    } else if (pc.iceConnectionState === "disconnected") {
+      // remoteVideo.srcObject = null;
+      // if (!signaler.polite) {
+        pc.restartIce();
+        signaler.restart();
+        // }
+      }
+    };
+
+  pc.onicecandidate = ({ candidate }) => {
+    console.log("candidate -->");
+    signaler.send({ candidate });
+  }
+
+
+}
+createPC();
 
 let onUpdateHandler = () => {};
 function updateHandler(update){
@@ -37,7 +94,7 @@ function handleReceiveMessage(event) {
 }
 
 
-function sendMessage(message) {
+export function sendMessage(message) {
   if (sendChannel && sendChannel.readyState == "open") {
     sendChannel.send(message);
   }
@@ -48,9 +105,15 @@ function handleReceiveChannelStatusChange(event) {
       receive_data_channel_state: receiveChannel.readyState,
     }
     updateHandler(update);
-    console.log(
-      `Receive channel's status has changed to ${receiveChannel.readyState}`,
-    );
+    if (receiveChannel.readyState == "closed") {
+      // if (!signaler.polite) {
+        // signaler.clearInfo();
+        // signaler.clearInfo(signaler.userType);
+      // }
+    }
+    // console.log(
+    //   `Receive channel's status has changed to ${receiveChannel.readyState}`,
+    // );
   }
 }
 function handleSendChannelStatusChange(event) {
@@ -82,88 +145,49 @@ export function start(onupdate, stream) {
   }
 }
 
-pc.ontrack = ({ track, streams }) => {
-  console.log("track received");
-  track.onunmute = () => {
-    let update = {
-      remote_stream: streams[0],
-    };
-    updateHandler(update);
-  };
-};
-
-let makingOffer = false;
-
-pc.onnegotiationneeded = async () => {
-  console.log("negotiation needed");
-  try {
-    makingOffer = true;
-    await pc.setLocalDescription();
-    console.log("description --> " + pc.localDescription.type);
-    signaler.send({ description: pc.localDescription });
-  } catch (err) {
-    console.error(err);
-  } finally {
-    makingOffer = false;
-  }
-};
-
-pc.oniceconnectionstatechange = () => {
-  let update = {
-    negotiation_state: pc.iceConnectionState
-  }
-  updateHandler(update);
-  console.log(pc.iceConnectionState);
-  if (pc.iceConnectionState === "failed") {
-    pc.restartIce();
-  } else if (pc.iceConnectionState == "connected"){
-    startMessageChannel();
-  } else if (pc.iceConnectionState === "disconnected") {
-    // remoteVideo.srcObject = null;
-    // if (!signaler.polite) {
-    //   pc.restartIce();
-    // }
-  }
-};
-
-pc.onicecandidate = ({ candidate }) => {
-  console.log("candidate -->");
-  signaler.send({ candidate });
-}
-
 let ignoreOffer = false;
 
 signaler.onmessage = async ({ data: { description, candidate } }) => {
-  // console.log(signaler.polite ? "polite" : "impolite");
+  // console.log(signalessr.polite ? "polite" : "impolite");
   try {
     if (description) {
       console.log("description <-- " + description.type);
+      console.log(pc.signalingState);
       const offerCollision =
-        description.type === "offer" &&
-        (makingOffer || pc.signalingState !== "stable");
+      description.type === "offer" &&
+      (makingOffer || pc.signalingState !== "stable");
 
       ignoreOffer = !signaler.polite && offerCollision;
       if (ignoreOffer) {
         console.log("ignored");
         return;
       }
+      try {
+        // if (signaler.polite && pc.signalingState == "has-local-")
+        await pc.setRemoteDescription(description);
+        if (description.type === "offer") {
+          await pc.setLocalDescription();
+          signaler.send({ description: pc.localDescription });
+        }
+      } catch (e) {
 
-      await pc.setRemoteDescription(description);
-      if (description.type === "offer") {
-        await pc.setLocalDescription();
-        signaler.send({ description: pc.localDescription });
+        console.log(e, e.code);
+        throw `description failure`
       }
+
     } else if (candidate) {
       try {
         await pc.addIceCandidate(candidate);
         console.log("candidate <--");
-      } catch (err) {
+      } catch (e) {
         if (!ignoreOffer) {
-          throw err;
+          console.log(e);
+          throw 'candidate failure';
         }
       }
     }
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+
+
   }
 };
