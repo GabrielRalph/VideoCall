@@ -43,6 +43,9 @@ class RTCApp extends SvgPlus {
     this.vc = vc;
     this.vc.innerHTML = "";
 
+    this.copy = this.createChild(CopyIcon);
+    this.copy.styles = {visibility: "hidden"};
+
     this.fc = this.createChild("div", {style: {
       position: "fixed",
       width: "15px",
@@ -73,10 +76,10 @@ class RTCApp extends SvgPlus {
     //   // information from video call stored in video-call-element
     //   console.log(vce.numberOfParticipants);
     // }, 1000)
+    this.btns = btns;
     let key = getQueryKey();
     if (key != null) {
       let forceParticipant = key.option == "force";
-      console.log(key);
       await this.joinSession(key.key, forceParticipant);
     }
 
@@ -114,7 +117,7 @@ class RTCApp extends SvgPlus {
       if (this.v2.srcObject == null) {
         this.v2.srcObject = e.remote_stream;
         this.vc.appendChild(this.v2);
-        
+
       }
     }
     if ("remove_stream" in e) {
@@ -134,11 +137,16 @@ class RTCApp extends SvgPlus {
 
   async createSession(){
     if (await Webcam.startWebcam()) {
+      if (this.btns.create) this.btns.create.remove();
       this.v1.srcObject = Webcam.getStream();
       this.vc.appendChild(this.v1);
       let key = await signaler.make();
+      console.log(window.location + "?" + key);
       await signaler.join(key);
       VideoCall.start((e) => this.onupdate(e), Webcam.getStream());
+      this.copy.styles = {visibility: "visible"};
+      this.copy.value = "'" + window.location + "?" + key + "'";
+      this.copy.text = `'${key}'`;
       this.session_started = true;
     } else {
       alert("Webcam is not accessible.")
@@ -147,6 +155,8 @@ class RTCApp extends SvgPlus {
 
   async joinSession(key, forceParticipant = false){
     if (await Webcam.startWebcam()) {
+
+      if (this.btns.create) this.btns.create.remove();
       this.v1.srcObject = Webcam.getStream();
       this.vc.appendChild(this.v1);
       let res = await signaler.join(key, forceParticipant);
@@ -155,6 +165,9 @@ class RTCApp extends SvgPlus {
         return;
       }
       VideoCall.start((e) => this.onupdate(e), Webcam.getStream())
+      this.copy.styles = {visibility: "visible"};
+      this.copy.value = "'" + window.location + "?" + key + "'";
+      this.copy.text = `'${key}'`;
       this.session_started = true;
     } else {
       alert("Webcam is not accessible.")
