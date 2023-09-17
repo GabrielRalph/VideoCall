@@ -46,6 +46,7 @@ class RTCApp extends SvgPlus {
     this.copy = this.createChild(CopyIcon);
     this.copy.styles = {visibility: "hidden"};
 
+
     this.fc = this.createChild("div", {style: {
       position: "fixed",
       width: "15px",
@@ -66,7 +67,17 @@ class RTCApp extends SvgPlus {
       window.requestAnimationFrame(next);
     }
     window.requestAnimationFrame(next);
-
+    this.loading = this.createChild("div", {styles: {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      bottom: "0",
+      right: "0",
+      "backdrop-filter": "blur(25px)",
+      background: "#0000003",
+      visibility: "hidden",
+      "z-index": 100,
+    }});
     // this.createChild("overlay")
     // let signaler = VideoCall.signaler;
     // VideoCall.setElement(vce);
@@ -99,6 +110,9 @@ class RTCApp extends SvgPlus {
       }
 
     }
+
+
+
   }
 
   onupdate(e) {
@@ -116,7 +130,7 @@ class RTCApp extends SvgPlus {
     if ("remote_stream" in e) {
       if (this.v2.srcObject == null) {
         this.v2.srcObject = e.remote_stream;
-        this.vc.appendChild(this.v2);
+        if (this.open) { this.loaded();}
 
       }
     }
@@ -125,18 +139,29 @@ class RTCApp extends SvgPlus {
       this.v2.remove();
     }
     if ("receive_data_channel_state" in e || "negotiation_state" in e) {
+      this.open = false
       if (e.receive_data_channel_state == "closed" || e.negotiation_state == "disconnected") {
         this.v2.remove();
         this.v2.srcObject = null;
       } else if (e.receive_data_channel_state == "open") {
-        this.vc.appendChild(this.v2);
+        this.open = true;
+        if (this.v2.srcObject != null) {
+          this.loaded();
+        }
       }
     }
+  }
+
+  loaded(){
+    this.vc.appendChild(this.v2);
+    this.loading.styles = {"visibility": "hidden"}
   }
 
 
   async createSession(){
     if (await Webcam.startWebcam()) {
+      this.loading.styles = {"visibility": "visible"}
+
       if (this.btns.create) this.btns.create.remove();
       this.v1.srcObject = Webcam.getStream();
       this.vc.appendChild(this.v1);
@@ -155,6 +180,7 @@ class RTCApp extends SvgPlus {
 
   async joinSession(key, forceParticipant = false){
     if (await Webcam.startWebcam()) {
+      this.loading.styles = {"visibility": "visible"}
 
       if (this.btns.create) this.btns.create.remove();
       this.v1.srcObject = Webcam.getStream();
