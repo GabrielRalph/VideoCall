@@ -26,20 +26,29 @@ function createPC(){
       };
       updateHandler(update);
     };
+    track.onmute = () => {
+      let update = {
+        remove_stream: true,
+      }
+      console.log("MUTED");
+      updateHandler(update);
+    }
   };
 
 
   pc.onnegotiationneeded = async () => {
-    console.log("negotiation needed");
-    try {
-      makingOffer = true;
-      await pc.setLocalDescription();
-      console.log("description --> " + pc.localDescription.type);
-      signaler.send({ description: pc.localDescription });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      makingOffer = false;
+    console.log("negotiation needed " + readyForNegotiations);
+    if (readyForNegotiations) {
+      try {
+        makingOffer = true;
+        await pc.setLocalDescription();
+        console.log("description --> " + pc.localDescription.type);
+        signaler.send({ description: pc.localDescription });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        makingOffer = false;
+      }
     }
   };
 
@@ -53,15 +62,15 @@ function createPC(){
       pc.restartIce();
     } else if (pc.iceConnectionState == "connected"){
       // signaler.clearInfo();
-      startMessageChannel();
     } else if (pc.iceConnectionState === "disconnected") {
       // remoteVideo.srcObject = null;
       // if (!signaler.polite) {
-        pc.restartIce();
-        signaler.restart();
-        // }
-      }
-    };
+      //   pc.restartIce();
+      //   signaler.restart();
+      sendChannel = null;
+      // }
+    }
+  };
 
   pc.onicecandidate = ({ candidate }) => {
     console.log("candidate -->");
@@ -74,6 +83,13 @@ createPC();
 
 let onUpdateHandler = () => {};
 function updateHandler(update){
+  // if (update.negotiation_state == "connected") {
+  //   update.receive_data_channel_state = "open";
+  // } else if (update.negotiation_state == "disconnected"){
+  //   update.receive_data_channel_state = "closed";
+  //
+  // }
+  console.log(update);
   onUpdateHandler(update);
 };
 let sendChannel;
@@ -105,11 +121,13 @@ function handleReceiveChannelStatusChange(event) {
       receive_data_channel_state: receiveChannel.readyState,
     }
     updateHandler(update);
-    if (receiveChannel.readyState == "closed") {
+    if (receiveChannel.readyState == "open" && sendChannel == null) {
       // if (!signaler.polite) {
         // signaler.clearInfo();
+        startMessageChannel();
         // signaler.clearInfo(signaler.userType);
       // }
+
     }
     // console.log(
     //   `Receive channel's status has changed to ${receiveChannel.readyState}`,
@@ -122,6 +140,9 @@ function handleSendChannelStatusChange(event) {
     let update = {
       send_data_channel_state: state,
     }
+    if (state == "closed") {
+      sendChannel = null;
+    }
     updateHandler(update)
   }
 }
@@ -132,14 +153,18 @@ function startMessageChannel(){
   sendChannel.onclose = handleSendChannelStatusChange;
 }
 
+let readyForNegotiations = false;
 export function start(onupdate, stream) {
+  readyForNegotiations = false;
   if (signaler.key) {
     if (onupdate instanceof Function) onUpdateHandler = onupdate;
+    startMessageChannel();
 
-    console.log(window.location.origin + "/?" + signaler.key);
+    // console.log(window.location.origin + "/?" + signaler.key);
     for (const track of stream.getTracks()) {
       pc.addTrack(track, stream);
     }
+    readyForNegotiations = true;
   } else {
     console.log("signal server not connected");
   }
@@ -166,7 +191,10 @@ signaler.onmessage = async ({ data: { description, candidate } }) => {
         // if (signaler.polite && pc.signalingState == "has-local-")
         await pc.setRemoteDescription(description);
         if (description.type === "offer") {
+          console.log("sending");
           await pc.setLocalDescription();
+          console.log("description --> " + pc.localDescription.type);
+
           signaler.send({ description: pc.localDescription });
         }
       } catch (e) {

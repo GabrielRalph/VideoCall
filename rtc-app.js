@@ -21,8 +21,8 @@ function getQueryKey(string = window.location.search) {
 }
 let x = 0;
 let y = 0;
-let w = window.innerHeight;
-let h = window.innerWidth;
+let w = window.innerWidth;
+let h = window.innerHeight;
 let change_flag = false;
 window.onmousemove = (e) => {
   x = e.x - window.innerWidth/2;
@@ -113,7 +113,13 @@ class RTCApp extends SvgPlus {
     if ("remote_stream" in e) {
       if (this.v2.srcObject == null) {
         this.v2.srcObject = e.remote_stream;
+        this.vc.appendChild(this.v2);
+        
       }
+    }
+    if ("remove_stream" in e) {
+      this.v2.srcObject = null;
+      this.v2.remove();
     }
     if ("receive_data_channel_state" in e || "negotiation_state" in e) {
       if (e.receive_data_channel_state == "closed" || e.negotiation_state == "disconnected") {

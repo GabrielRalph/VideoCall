@@ -157,7 +157,7 @@ export class SignalingChannel {
     if (key && userType) {
       let userRef = getSessionRef(key, userType);
       if (description) {
-        let descriptionRef = child(userRef, "description");
+        let descriptionRef = push(child(userRef, "description"));
         await set(descriptionRef, description.toJSON());
       } else if (candidate) {
         let candidateRef = push(child(userRef, "candidates"));
@@ -210,7 +210,7 @@ export class SignalingChannel {
 
   get polite() {return this.userType !== "host"}
 
-  clearInfo(key, user){
+  clearInfo(key = this.key, user = this.polite ? "participant" : "host"){
     let candidateRef = getSessionRef(key, `${user}/candidates`);
     let descriptionRef = getSessionRef(key, `${user}/description`);
     set(candidateRef, null);
@@ -223,7 +223,7 @@ export class SignalingChannel {
     if (this._description_listener instanceof Function) this._description_listener();
     this._add_listeners(key, userType);
   }
-  _add_listeners(key, userType){
+  async _add_listeners(key, userType){
     // Unsubscribe any previous listeners
     this.leave();
 
@@ -234,9 +234,13 @@ export class SignalingChannel {
     let listenTo = userType == "host" ? "participant" : "host"
     let candidateRef = getSessionRef(key, `${listenTo}/candidates`);
     let descriptionRef = getSessionRef(key, `${listenTo}/description`);
+
+    // await set(descriptionRef, null);
+    // await set(candidateRef, null);
+
     console.log("listen to ", listenTo);
     let init = true;
-    this._description_listener = onValue(descriptionRef, (sc) => {
+    this._description_listener = onChildAdded(descriptionRef, (sc) => {
       let json = sc.val();
       if (json !== null) {
         this._message_handler({
@@ -244,6 +248,7 @@ export class SignalingChannel {
             description: new RTCSessionDescription(json)
           }
         })
+        set(child(descriptionRef, sc.key), null);
       }
     });
     if (init) {
@@ -255,6 +260,7 @@ export class SignalingChannel {
             candidate: new RTCIceCandidate(sc.val())
           }
         })
+        set(child(candidateRef, key), null);
       });
       this._listening = true;
     }
