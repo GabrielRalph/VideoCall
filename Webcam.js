@@ -108,7 +108,9 @@ export function setProcess(algorithm){
 }
 
 export async function startWebcam(params = camParams){
-  if (webcam_on) stopWebcam();
+  if (webcam_on) {
+    return true;
+  }
   webcam_on = false;
   try {
     setUserMediaVariable();
