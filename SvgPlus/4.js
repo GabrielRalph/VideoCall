@@ -493,13 +493,13 @@ class SvgPlus{
     let parser = new DOMParser()
     let doc = parser.parseFromString(string, "image/svg+xml");
     let errors = doc.getElementsByTagName('parsererror');
+    let dsvg = doc.querySelector("svg");
     if (errors && errors.length > 0){
-      throw doc
+      throw doc;
     }
-    let psvg = doc.firstChild;
     let svg = make("svg");
-    svg.setAttribute("viewBox", psvg.getAttribute("viewBox"));
-    svg.innerHTML = psvg.innerHTML;
+    svg.setAttribute("viewBox", dsvg.getAttribute("viewBox"));
+    svg.innerHTML = dsvg.innerHTML;
     return svg;
   }
 

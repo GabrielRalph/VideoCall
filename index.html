@@ -13,16 +13,49 @@
 
   </script>
   <style>
+  .v-container {
+    height: 15vh;
+    position: fixed;
+    top: 0;
+    padding: 3px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    display: flex;
+    gap: 3px;
+    background: #252222;
+    border-radius: 13px;
+    margin: 10px;
+  }
+  .v-container video {
+    height: 100%;
+    border-radius: 10px;
+  }
+
+
+  .cali-fill, .i-fill{
+    fill: white;
+  }
+  .v-container[show-icons] .icon-slot{
+    opacity: 1;
+  }
   .icon-slot {
+    background: #252222cc;
+    border-radius: 7px;
+    margin: 3px;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: 0.3s ease-in opacity;
+    cursor: pointer;
     /* background: #fff5; */
     /* border-radius: 0.5em 0px 0.5em 0px; */
     /* margin: 0.25em; */
   }
   .icon-slot svg {
-    height: calc(1em * var(--ws));
+    height: calc(1.3em * var(--ws));
     padding: 0.3em;
   }
-  *[remote-calibrating] .cali-fill {
+  *[remote-calibrating] #cali-fill * {
     fill: red;
   }
 
@@ -41,20 +74,7 @@
     align-items: center;
   }
 
-    .v-container {
-      height: 15vh;
-      position: fixed;
-      top: 0;
-      padding: 1em;
-      left: 50%;
-      transform: translate(-50%, 0);
-      display: flex;
-      gap: 0.5em;
-    }
-    .v-container video {
-      height: 100%;
-      border-radius: 0.5em;
-    }
+
     .btn {
       background: #5e3770;
       color: white;
