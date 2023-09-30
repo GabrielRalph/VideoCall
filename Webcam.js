@@ -10,6 +10,7 @@ let Canvas = document.createElement("canvas");
 let Ctx = Canvas.getContext("2d", {willReadFrequently: true});
 let Video = document.createElement("video");
 let Stream = null;
+let Stream2 = null;
 let Process = null;
 let webcam_on = false;
 var stopCapture = false;
@@ -116,11 +117,13 @@ export async function startWebcam(params = camParams){
     setUserMediaVariable();
     // Get the users video media stream
     let stream = await navigator.mediaDevices.getUserMedia( params );
+    let stream2 = await navigator.mediaDevices.getUserMedia( params );
     if (!stream) {
       webcam_off = false;
       throw 'no stream'
     }
     Stream = stream;
+    Stream2 = stream2;
     Video.srcObject = stream;
 
     return new Promise((resolve, reject) => {
@@ -183,4 +186,7 @@ export function isOn(){return webcam_on;}
 
 export function isProcessing(){return capturing;}
 
-export function getStream(){return Stream;}
+export function getStream(i){
+  if (i == 2) return Stream2;
+  else return Stream;
+}

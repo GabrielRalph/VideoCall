@@ -35,7 +35,7 @@ async function getHostUID(key){
     } catch(e) {
     }
   }
-  throw "failed to connect to signaling server"
+  throw "failed to connect to signaling server";
 }
 
 
@@ -111,14 +111,14 @@ export async function make(){
 */
 export async function join(key, onmessage, forceParticipant = false) {
   let hostUID = await getHostUID(key);
-  if (hostUID !== null) {
-    if (onmessage instanceof Function) messageHandler = onmessage;
-    let asParticipant = !((hostUID == getUID()) && (!forceParticipant));
-
-    let userType = asParticipant ? "participant" : "host";
-    addListeners(key, userType);
+  if (hostUID == null) {
+    throw "invalid session key"
   }
-  return hostUID !== null;
+  if (onmessage instanceof Function) messageHandler = onmessage;
+  let asParticipant = !((hostUID == getUID()) && (!forceParticipant));
+
+  let userType = asParticipant ? "participant" : "host";
+  addListeners(key, userType);
 }
 
 /* Leave the current session

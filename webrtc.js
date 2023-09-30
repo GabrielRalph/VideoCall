@@ -13,11 +13,17 @@ const config = {
 
 let makingOffer = false;
 let ignoreOffer = false;
+
 let remoteContentStatus = {
   video: null,
   audio: null,
-  data: null,
+  data_send: null,
+  data_receive: null,
+  ice_state: null,
 }
+let localStream = null;
+let remoteStream = null;
+
 let sendChannel;
 let receiveChannel;
 
@@ -30,39 +36,104 @@ pc.onnegotiationneeded = onnegotiationneeded;
 pc.oniceconnectionstatechange = oniceconnectionstatechange;
 pc.onicecandidate = onicecandidate;
 
+
+export function muteTrack(track = "auido", bool = null) {
+  let res = null;
+  if (localStream) {
+    let tracks = localStream[`get${track[0].toUpperCase() + track.slice(1)}Tracks`]();
+    let t = tracks[0];
+    if (bool == null) bool = t.enabled;
+    t.enabled = !bool;
+    let msg = {};
+    msg[track + "_muted"] = bool;
+    sendMessage(msg);
+    res = bool;
+  }
+  return res;
+}
+
 export async function makeSession() {
   return RTCSignaler.make();
 }
 
 export async function start(key, stream, onupdate, forceParticipant){
-  let started = false;
-  if (await RTCSignaler.join(key, onSignalerReceive, forceParticipant)) {
-    if (onupdate instanceof Function) onUpdateHandler = onupdate;
-    startMessageChannel();
-    for (const track of stream.getTracks()) {
-      pc.addTrack(track, stream);
-    }
-    started = true;
-  } else {
-    console.log("signal server not connected");
+  await RTCSignaler.join(key, onSignalerReceive, forceParticipant)
+  remoteStream = null;
+  localStream = stream;
+  if (onupdate instanceof Function) onUpdateHandler = onupdate;
+  startMessageChannel();
+  for (const track of stream.getTracks()) {
+    pc.addTrack(track, stream);
   }
-  return started;
 }
 
 export function getUserType(){
   return RTCSignaler.getUserType();
 }
 
-function updateHandler(update){
-  remoteContentStatus.data = receiveChannel ? receiveChannel.readyState == "open" : false
-  onUpdateHandler(update);
+let sessionState = "closed";
+let remoteCache = null;
+function updateHandler(update, type){
+  // console.log(remoteContentStatus);
+  if (type == "state") {
+    let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
+
+    // Session is open and has now started
+    if (sessionState == "closed" && video && audio && data_send == "open" && data_receive == "open" && ice_state == "connected") {
+
+      // Send message to remote caller telling them we are open
+      sessionState = "open";
+      sendMessage({
+        remote_status: "open",
+        audio_muted: !localStream.getAudioTracks()[0].enabled,
+        video_muted: !localStream.getVideoTracks()[0].enabled,
+      });
+
+      // i.e. An opening message from the caller has been already received
+      if (remoteCache != null)  {
+        remoteCache.status = "open";
+        remoteCache.remote_stream = remoteStream;
+        console.log("open 1");
+        onUpdateHandler(remoteCache);
+        remoteCache = null;
+      }
+
+    // Session has closed
+    } else {
+      if (sessionState == "open") {
+        sessionState = "closed";
+        // remoteStream = null;
+        onUpdateHandler({status: "closed"});
+      }
+    }
+
+  // Data has been received from the remote caller
+  } else if (type == "data") {
+    // If the session is open
+    if (sessionState == "open") {
+      // A message to say that the remote caller is started session
+      if (update.remote_status == "open") {
+        update.status = "open"; // local session status
+        update.remote_stream = remoteStream;
+        console.log("open 2");
+      }
+      onUpdateHandler(update);
+
+    // Session is not open on our end but a message from the remote caller was
+    // received to say they are open, in this case we will store the message
+    // until we open.
+    } else if (update.remote_status == "open") {
+      remoteCache = update;
+    }
+  }
+  // console.log(remoteContentStatus, sessionState);
 }
 
 // WebRTC negotiation event handlers
 async function onSignalerReceive({ data: { description, candidate } }) {
   try {
     if (description) {
-      console.log("description <-- " + description.type);
+      // console.log("description <-- " + description.type);
       console.log(pc.signalingState);
       const offerCollision =
       description.type === "offer" &&
@@ -70,16 +141,16 @@ async function onSignalerReceive({ data: { description, candidate } }) {
 
       ignoreOffer = !RTCSignaler.isPolite() && offerCollision;
       if (ignoreOffer) {
-        console.log("ignored");
+        // console.log("ignored");
         return;
       }
       try {
         // if (signaler.polite && pc.signalingState == "has-local-")
         await pc.setRemoteDescription(description);
         if (description.type === "offer") {
-          console.log("sending");
+          // console.log("sending");
           await pc.setLocalDescription();
-          console.log("description --> " + pc.localDescription.type);
+          // console.log("description --> " + pc.localDescription.type);
 
           RTCSignaler.send({ description: pc.localDescription });
         }
@@ -92,7 +163,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
     } else if (candidate) {
       try {
         await pc.addIceCandidate(candidate);
-        console.log("candidate <--");
+        // console.log("candidate <--");
       } catch (e) {
         if (!ignoreOffer) {
           console.log(e);
@@ -105,7 +176,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
 }
 
 function onicecandidate(data) {
-  console.log("candidate -->");
+  // console.log("candidate -->");
   RTCSignaler.send(data);
 }
 
@@ -113,22 +184,22 @@ function oniceconnectionstatechange(){
   let update = {
     negotiation_state: pc.iceConnectionState
   }
-  updateHandler(update);
-  console.log(pc.iceConnectionState);
   if (pc.iceConnectionState === "failed") {
     pc.restartIce();
   } else if (pc.iceConnectionState == "connected"){
   } else if (pc.iceConnectionState === "disconnected") {
     sendChannel = null;
   }
+  remoteContentStatus.ice_state = pc.iceConnectionState;
+  updateHandler(update, "state");
 }
 
 async function onnegotiationneeded(){
-  console.log("negotiation needed " );
+  // console.log("negotiation needed " );
   try {
     makingOffer = true;
     await pc.setLocalDescription();
-    console.log("description --> " + pc.localDescription.type);
+    // console.log("description --> " + pc.localDescription.type);
     RTCSignaler.send({ description: pc.localDescription });
   } catch (err) {
     console.error(err);
@@ -139,26 +210,41 @@ async function onnegotiationneeded(){
 
 function ontrackadded({ track, streams }){
   console.log("track received " + track.kind);
+  console.log(streams);
+  remoteStream = streams[0];
   track.onunmute = () => {
     console.log("track unmuted " + track.kind);
+    console.log(streams);
+    // if (remoteStream == null) {
+    //   // console.log(remoteStream);
+    // }
     let update = {
       remote_stream: streams[0],
     };
     remoteContentStatus[track.kind] = track;
-    updateHandler(update);
+    updateHandler(update, "state");
   };
   track.onmute = () => {
+    console.log("track muted " + track.kind);
     let update = {
       remove_stream: true,
     }
+    // remoteStream = null;
     // console.log("MUTED " + track.kind);
     remoteContentStatus[track.kind] = null;
-    updateHandler(update);
+    updateHandler(update, "state");
   }
 }
 
 
 // WebRTC data channel functions
+export function sendMessage(message) {
+  if (sendChannel && sendChannel.readyState == "open") {
+    sendChannel.send(JSON.stringify(message));
+  }
+}
+
+
 function receiveChannelCallback(event) {
   if (sendChannel == null) {
     startMessageChannel();
@@ -170,17 +256,7 @@ function receiveChannelCallback(event) {
 }
 
 function handleReceiveMessage(event) {
-  let update = {
-    data: event.data,
-  }
-  updateHandler(update);
-  // console.log(event.data);
-}
-
-export function sendMessage(message) {
-  if (sendChannel && sendChannel.readyState == "open") {
-    sendChannel.send(message);
-  }
+  updateHandler(JSON.parse(event.data), "data");
 }
 
 function handleReceiveChannelStatusChange(event) {
@@ -188,8 +264,8 @@ function handleReceiveChannelStatusChange(event) {
     let update = {
       receive_data_channel_state: receiveChannel.readyState,
     }
-    remoteContentStatus.data = receiveChannel.readyState == "open"
-    updateHandler(update);
+    remoteContentStatus.data_receive = receiveChannel.readyState
+    updateHandler(update, "state");
   }
 }
 
@@ -199,10 +275,11 @@ function handleSendChannelStatusChange(event) {
     let update = {
       send_data_channel_state: state,
     }
+    remoteContentStatus.data_send = state
     if (state == "closed") {
       sendChannel = null;
     }
-    updateHandler(update)
+    updateHandler(update, "state")
   }
 }
 

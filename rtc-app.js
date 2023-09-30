@@ -4,6 +4,7 @@ import * as VideoCall from "./webrtc.js"
 import * as Webcam from "./Webcam.js"
 import {Icons} from "./assets/icons.js"
 
+window.webcam = Webcam;
 function getQueryKey(string = window.location.search) {
   let key = null;
   try {
@@ -121,7 +122,6 @@ class VideoPannel extends SvgPlus {
 
     let remote = this.createChild(VideoDisplay);
     remote.styles = {"display": "none"}
-    this.remote_muted = false;
     remote.setIcon("topLeft", "unmute", () => this.muteRemote());
     if (mode == "host") {
       remote.setIcon("topRight", "calibrate");
@@ -164,18 +164,12 @@ class VideoPannel extends SvgPlus {
   }
 
   toggleLocalVideo(){
-    let localSrc = this.getSrc("local");
-    let vtrack = localSrc.getTracks()[1];
-    let mute = !vtrack.enabled;
-    vtrack.enabled = mute;
-    this.videos.local.setIcon("bottomLeft", mute ? "video" : "novideo", () => this.toggleLocalVideo());
+    let mute = VideoCall.muteTrack("video");
+    this.videos.local.setIcon("bottomLeft", mute ? "novideo" : "video", () => this.toggleLocalVideo());
   }
   toggleLocalAudio(){
-    let localSrc = this.getSrc("local");
-    let vtrack = localSrc.getTracks()[0];
-    let mute = !vtrack.enabled;
-    vtrack.enabled = mute;
-    this.videos.local.setIcon("topLeft", mute ? "unmute" : "mute", () => this.toggleLocalAudio());
+    let mute = VideoCall.muteTrack("audio");
+    this.videos.local.setIcon("topLeft", mute ? "mute" : "unmute", () => this.toggleLocalAudio());
   }
 
 
@@ -217,19 +211,16 @@ class RTCApp extends SvgPlus {
 
 
 
+
     let next = () => {
       let msg = {};
-      let lsrc = this.videos.getSrc("local");
-      if (lsrc) {
-        msg.muted = !lsrc.getTracks()[0].enabled;
-      }
       if (change_flag) {
         change_flag = false;
         let coords = {x,y,w,h};
         for (let key in coords) msg[key] = coords[key];
+        VideoCall.sendMessage(msg);
       }
 
-      VideoCall.sendMessage(JSON.stringify(msg));
       window.requestAnimationFrame(next);
     }
     window.requestAnimationFrame(next);
@@ -278,7 +269,7 @@ class RTCApp extends SvgPlus {
   }
 
   calibrate(){
-    VideoCall.sendMessage(JSON.stringify({calibrating: true}))
+    VideoCall.sendMessage({calibrating: true})
     let cwindow = this.createChild("div", {
       content: "Calibrating",
       style: {
@@ -293,64 +284,46 @@ class RTCApp extends SvgPlus {
     }})
     setTimeout(() => {
       cwindow.remove();
-      VideoCall.sendMessage(JSON.stringify({calibrating: false}));
+      VideoCall.sendMessage({calibrating: false});
     }, 2000)
   }
 
-  onupdate(e) {
-    // console.log(e);
-    if ("data" in e) {
-      let data = JSON.parse(e.data);
-      if ("muted" in data) {
-        if (this.remote_muted != data.muted) {
-          this.videos.setIcon("remote", "topLeft", data.muted ? "mute" : "unmute")
-        }
-        this.remote_muted = data.muted;
-      }
-      if ("x" in data) {
-        let nx = w/2 + w * data.x / data.w;
-        let ny = h/2 + h * data.y / data.h;
-        this.fc.styles = {
-          top: ny + "px",
-          left: nx + "px",
-        }
-      } else if ("calibrate" in data) {
-        this.calibrate();
-      } else if ("calibrating" in data) {
-        this.toggleAttribute("remote-calibrating", data.calibrating)
-      }
-    }
-    if ("remote_stream" in e) {
-      console.log("x");
-      if (this.remote_stream == null) {
-        console.log("y");
-        this.remote_stream = e.remote_stream
-        if (this.open) { this.loaded();}
-      }
-    }
-    if ("remove_stream" in e) {
-      this.remote_stream = null;
-      this.videos.setSrc("remote", null);
-      this.loading();
 
-    }
-    if ("receive_data_channel_state" in e || "negotiation_state" in e) {
-      this.open = false
-      if (e.receive_data_channel_state == "closed" || e.negotiation_state == "disconnected") {
+
+
+  onupdate(e) {
+    if ("status" in e) {
+      console.log(e);
+      if (e.status == "open") {
+        this.videos.setSrc("remote", e.remote_stream);
+        this.loaded();
+      } else {
         this.videos.setSrc("remote", null);
-        this.remote_stream = null;
         this.loading();
-      } else if (e.receive_data_channel_state == "open") {
-        this.open = true;
-        if (this.remote_stream != null) {
-          this.loaded();
-        }
       }
+    }
+
+    if ("audio_muted" in e) {
+      this.videos.setIcon("remote", "topLeft", e.audio_muted ? "mute" : "unmute");
+    }
+
+    if ("x" in e) {
+      let nx = w/2 + w * e.x / e.w;
+      let ny = h/2 + h * e.y / e.h;
+      this.fc.styles = {
+        top: ny + "px",
+        left: nx + "px",
+      }
+    }
+    if ("calibrate" in e) {
+      this.calibrate();
+    }
+    if ("calibrating" in e) {
+      this.toggleAttribute("remote-calibrating", e.calibrating)
     }
   }
 
   loaded(){
-    this.videos.setSrc("remote", this.remote_stream);
     this.loader_pannel.styles = {"visibility": "hidden"};
   }
 
@@ -359,7 +332,7 @@ class RTCApp extends SvgPlus {
   }
 
   askCalibration(){
-    VideoCall.sendMessage(JSON.stringify({calibrate: true}))
+    VideoCall.sendMessage({calibrate: true})
   }
 
   async createSession(){
@@ -374,24 +347,25 @@ class RTCApp extends SvgPlus {
   async joinSession(key, forceParticipant = false){
     if (await Webcam.startWebcam()) {
       this.loading();
+      let stream = Webcam.getStream(2)
       if (this.btns.create) this.btns.create.remove();
-      this.videos.setSrc("local", Webcam.getStream());
+      this.videos.setSrc("local", stream);
 
-      let started = await VideoCall.start(key, Webcam.getStream(), (e) => this.onupdate(e), forceParticipant);
-      if (started) {
+      try {
+        await VideoCall.start(key, stream, (e) => this.onupdate(e), forceParticipant);
         this.copy.styles = {visibility: "visible"};
         this.copy.value = makeKeyLink(key);
         this.copy.text = key;
         this.session_started = true;
         let userType = VideoCall.getUserType();
         if (userType == "host") {
-          this.videos.setIcon("remote", "topRight", "calibrate", () => this.askCalibration())
+          this.videos.setIcon("remote", "topRight", "calibrate", () => this.askCalibration());
         }
-      } else {
-        alert("Session not available")
+      } catch (e) {
+        alert(e);
       }
     } else {
-      alert("Webcam is not accessible.")
+      alert("Webcam is not accessible.");
     }
   }
 }
