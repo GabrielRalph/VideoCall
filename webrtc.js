@@ -57,6 +57,7 @@ export async function makeSession() {
 }
 
 export async function start(key, stream, onupdate, forceParticipant){
+  console.log("starting session");
   await RTCSignaler.join(key, onSignalerReceive, forceParticipant)
   remoteStream = null;
   localStream = stream;
@@ -74,8 +75,9 @@ export function getUserType(){
 let sessionState = "closed";
 let remoteCache = null;
 function updateHandler(update, type){
-  // console.log(remoteContentStatus);
+  console.log(remoteContentStatus);
   if (type == "state") {
+
     let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
 
     // Session is open and has now started
@@ -133,7 +135,7 @@ function updateHandler(update, type){
 async function onSignalerReceive({ data: { description, candidate } }) {
   try {
     if (description) {
-      // console.log("description <-- " + description.type);
+      console.log("description <-- " + description.type);
       console.log(pc.signalingState);
       const offerCollision =
       description.type === "offer" &&
@@ -150,7 +152,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
         if (description.type === "offer") {
           // console.log("sending");
           await pc.setLocalDescription();
-          // console.log("description --> " + pc.localDescription.type);
+          console.log("description --> " + pc.localDescription.type);
 
           RTCSignaler.send({ description: pc.localDescription });
         }
@@ -163,7 +165,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
     } else if (candidate) {
       try {
         await pc.addIceCandidate(candidate);
-        // console.log("candidate <--");
+        console.log("candidate <--");
       } catch (e) {
         if (!ignoreOffer) {
           console.log(e);
@@ -176,7 +178,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
 }
 
 function onicecandidate(data) {
-  // console.log("candidate -->");
+  console.log("candidate -->");
   RTCSignaler.send(data);
 }
 
@@ -195,11 +197,11 @@ function oniceconnectionstatechange(){
 }
 
 async function onnegotiationneeded(){
-  // console.log("negotiation needed " );
+  console.log("negotiation needed " );
   try {
     makingOffer = true;
     await pc.setLocalDescription();
-    // console.log("description --> " + pc.localDescription.type);
+    console.log("description --> " + pc.localDescription.type);
     RTCSignaler.send({ description: pc.localDescription });
   } catch (err) {
     console.error(err);
@@ -229,8 +231,6 @@ function ontrackadded({ track, streams }){
     let update = {
       remove_stream: true,
     }
-    // remoteStream = null;
-    // console.log("MUTED " + track.kind);
     remoteContentStatus[track.kind] = null;
     updateHandler(update, "state");
   }
