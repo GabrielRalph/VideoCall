@@ -20,7 +20,8 @@ let remoteContentStatus = {
   data_send: null,
   data_receive: null,
   ice_state: null,
-  open: null,
+  sent: null,
+  recv: null,
 }
 let localStream = null;
 let remoteStream = null;
@@ -44,12 +45,12 @@ function rtc_base_log(str) {
     }
 }
 function rtc_log_state() {
-  let {video, audio, data_send, data_receive, ice_state, open} = remoteContentStatus;
+  let {video, audio, data_send, data_receive, ice_state, sent, recv} = remoteContentStatus;
   let cc = (val) => `color: ${val ? "green" : "red"}`
   data_send = data_send == "open";
   data_receive = data_receive == "open";
   ice_state = ice_state == "connected";
-  console.log("%cvid %caud %cin %cout %cice %csent %crecv", cc(video), cc(audio), cc(data_receive), cc(data_send), cc(ice_state), cc(open), cc(sessionState == "open"));
+  console.log("%cvid %caud %cin %cout %cice %csent %crecv", cc(video), cc(audio), cc(data_receive), cc(data_send), cc(ice_state), cc(sent), cc(recv));
 }
 function rtc_l1_log(str) {
   console.log("%c" + str, 'color: #00a3fd');
@@ -94,77 +95,50 @@ export function getUserType(){
 let sessionState = "closed";
 let remoteCache = null;
 function updateHandler(update, type){
-  let new_update = null;
-  let open_stats = null;
   if (type == "state") {
-
     let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
 
     // Session is open and has now started
     if (sessionState == "closed" && video && audio && data_send == "open" && data_receive == "open" && ice_state == "connected") {
-
       // Send message to remote caller telling them we are open
-      sessionState = "open";
       sendMessage({
-        remote_status: "open",
-        audio_muted: !localStream.getAudioTracks()[0].enabled,
-        video_muted: !localStream.getVideoTracks()[0].enabled,
+        request_status: true,
       });
-
-      // i.e. An opening message from the caller has been already received
-      if (remoteCache != null)  {
-        remoteCache.status = "open";
-        remoteCache.remote_stream = remoteStream;
-        open_stats = 1;
-        new_update = remoteCache
-        remoteCache = null;
-      }
+      remoteContentStatus.sent = true;
 
     // Session has closed
-    } else {
-      if (sessionState == "open") {
-        sessionState = "closed";
-        new_update = {status: "closed"};
-        open_stats = -1;
-      }
+    } else if (sessionState == "open") {
+      sessionState = "closed";
+      update = {status: "closed"};
+      rtc_l1_log("closed");
+      onUpdateHandler(update)
     }
+    rtc_log_state();
 
   // Data has been received from the remote caller
   } else if (type == "data") {
     // If the session is open
-    if (sessionState == "open") {
-      // A message to say that the remote caller is started session
-      if (update.remote_status == "open") {
-        remoteContentStatus.open = true;
-        update.status = "open"; // local session status
-        update.remote_stream = remoteStream;
-        open_stats = 2;
-      }
-      new_update = update;
+    if ("request_status" in update) {
+      sendMessage({
+        status_result: true,
+        audio_muted: !localStream.getAudioTracks()[0].enabled,
+        video_muted: !localStream.getVideoTracks()[0].enabled,
+      });
 
-    // Session is not open on our end but a message from the remote caller was
-    // received to say they are open, in this case we will store the message
-    // until we open.
-    } else if (update.remote_status == "open") {
-      remoteContentStatus.open = true;
-      remoteCache = update;
+    } else if ("status_result" in update) {
+      sessionState = "open"
+      remoteContentStatus.recv = true;
+      update.remote_stream = remoteStream;
+      update.status = "open";
+      rtc_log_state();
+      rtc_l1_log("open");
+    }
+
+    if (sessionState == "open"){
+      onUpdateHandler(update);
     }
   }
 
-  if (type == "state" || open_stats != null) {
-    rtc_log_state();
-  }
-  if (new_update != null){
-    if (open_stats != null) {
-      if (open_stats == -1) {
-        rtc_l1_log("closed");
-
-      } else {
-        rtc_l1_log("open " + open_stats);
-      }
-    }
-    onUpdateHandler(new_update);
-  }
 }
 
 // WebRTC negotiation event handlers
