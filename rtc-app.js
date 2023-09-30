@@ -293,7 +293,7 @@ class RTCApp extends SvgPlus {
 
   onupdate(e) {
     if ("status" in e) {
-      console.log(e);
+      // console.log(e);
       if (e.status == "open") {
         this.videos.setSrc("remote", e.remote_stream);
         this.loaded();

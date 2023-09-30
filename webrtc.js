@@ -20,6 +20,7 @@ let remoteContentStatus = {
   data_send: null,
   data_receive: null,
   ice_state: null,
+  open: null,
 }
 let localStream = null;
 let remoteStream = null;
@@ -35,6 +36,24 @@ pc.ontrack = ontrackadded
 pc.onnegotiationneeded = onnegotiationneeded;
 pc.oniceconnectionstatechange = oniceconnectionstatechange;
 pc.onicecandidate = onicecandidate;
+
+window.show_rtc_base = true;
+function rtc_base_log(str) {
+    if (window.show_rtc_base) {
+      console.log("%c\t" + str, 'color: #bada55');
+    }
+}
+function rtc_log_state() {
+  let {video, audio, data_send, data_receive, ice_state, open} = remoteContentStatus;
+  let cc = (val) => `color: ${val ? "green" : "red"}`
+  data_send = data_send == "open";
+  data_receive = data_receive == "open";
+  ice_state = ice_state == "connected";
+  console.log("%cvid %caud %cin %cout %cice %csent %crecv", cc(video), cc(audio), cc(data_receive), cc(data_send), cc(ice_state), cc(open), cc(sessionState == "open"));
+}
+function rtc_l1_log(str) {
+  console.log("%c" + str, 'color: #00a3fd');
+}
 
 
 export function muteTrack(track = "auido", bool = null) {
@@ -75,7 +94,8 @@ export function getUserType(){
 let sessionState = "closed";
 let remoteCache = null;
 function updateHandler(update, type){
-  console.log(remoteContentStatus);
+  let new_update = null;
+  let open_stats = null;
   if (type == "state") {
 
     let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
@@ -95,8 +115,8 @@ function updateHandler(update, type){
       if (remoteCache != null)  {
         remoteCache.status = "open";
         remoteCache.remote_stream = remoteStream;
-        console.log("open 1");
-        onUpdateHandler(remoteCache);
+        open_stats = 1;
+        new_update = remoteCache
         remoteCache = null;
       }
 
@@ -104,8 +124,8 @@ function updateHandler(update, type){
     } else {
       if (sessionState == "open") {
         sessionState = "closed";
-        // remoteStream = null;
-        onUpdateHandler({status: "closed"});
+        new_update = {status: "closed"};
+        open_stats = -1;
       }
     }
 
@@ -115,28 +135,44 @@ function updateHandler(update, type){
     if (sessionState == "open") {
       // A message to say that the remote caller is started session
       if (update.remote_status == "open") {
+        remoteContentStatus.open = true;
         update.status = "open"; // local session status
         update.remote_stream = remoteStream;
-        console.log("open 2");
+        open_stats = 2;
       }
-      onUpdateHandler(update);
+      new_update = update;
 
     // Session is not open on our end but a message from the remote caller was
     // received to say they are open, in this case we will store the message
     // until we open.
     } else if (update.remote_status == "open") {
+      remoteContentStatus.open = true;
       remoteCache = update;
     }
   }
-  // console.log(remoteContentStatus, sessionState);
+
+  if (type == "state" || open_stats != null) {
+    rtc_log_state();
+  }
+  if (new_update != null){
+    if (open_stats != null) {
+      if (open_stats == -1) {
+        rtc_l1_log("closed");
+
+      } else {
+        rtc_l1_log("open " + open_stats);
+      }
+    }
+    onUpdateHandler(new_update);
+  }
 }
 
 // WebRTC negotiation event handlers
 async function onSignalerReceive({ data: { description, candidate } }) {
   try {
     if (description) {
-      console.log("description <-- " + description.type);
-      console.log(pc.signalingState);
+      rtc_base_log("description <-- " + description.type);
+      rtc_base_log(pc.signalingState);
       const offerCollision =
       description.type === "offer" &&
       (makingOffer || pc.signalingState !== "stable");
@@ -152,7 +188,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
         if (description.type === "offer") {
           // console.log("sending");
           await pc.setLocalDescription();
-          console.log("description --> " + pc.localDescription.type);
+          rtc_base_log("description --> " + pc.localDescription.type);
 
           RTCSignaler.send({ description: pc.localDescription });
         }
@@ -165,7 +201,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
     } else if (candidate) {
       try {
         await pc.addIceCandidate(candidate);
-        console.log("candidate <--");
+        rtc_base_log("candidate <--");
       } catch (e) {
         if (!ignoreOffer) {
           console.log(e);
@@ -178,7 +214,7 @@ async function onSignalerReceive({ data: { description, candidate } }) {
 }
 
 function onicecandidate(data) {
-  console.log("candidate -->");
+  rtc_base_log("candidate -->");
   RTCSignaler.send(data);
 }
 
@@ -197,11 +233,11 @@ function oniceconnectionstatechange(){
 }
 
 async function onnegotiationneeded(){
-  console.log("negotiation needed " );
+  rtc_base_log("negotiation needed " );
   try {
     makingOffer = true;
     await pc.setLocalDescription();
-    console.log("description --> " + pc.localDescription.type);
+    rtc_base_log("description --> " + pc.localDescription.type);
     RTCSignaler.send({ description: pc.localDescription });
   } catch (err) {
     console.error(err);
@@ -211,12 +247,10 @@ async function onnegotiationneeded(){
 }
 
 function ontrackadded({ track, streams }){
-  console.log("track received " + track.kind);
-  console.log(streams);
+  rtc_base_log(`track received ${track.kind} [${streams[0].id.split("-")[0]}]`);
   remoteStream = streams[0];
   track.onunmute = () => {
-    console.log("track unmuted " + track.kind);
-    console.log(streams);
+    rtc_base_log("track unmuted " + track.kind);
     // if (remoteStream == null) {
     //   // console.log(remoteStream);
     // }
@@ -227,7 +261,7 @@ function ontrackadded({ track, streams }){
     updateHandler(update, "state");
   };
   track.onmute = () => {
-    console.log("track muted " + track.kind);
+    rtc_base_log("track muted " + track.kind);
     let update = {
       remove_stream: true,
     }
