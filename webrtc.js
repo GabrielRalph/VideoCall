@@ -109,6 +109,8 @@ function updateHandler(update, type){
     // Session has closed
     } else if (sessionState == "open") {
       sessionState = "closed";
+      remoteContentStatus.sent = false;
+      remoteContentStatus.recv = false;
       update = {status: "closed"};
       rtc_l1_log("closed");
       onUpdateHandler(update)
