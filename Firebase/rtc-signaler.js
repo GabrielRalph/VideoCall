@@ -1,4 +1,4 @@
-import {set, get, ref, push, child, getDB, getUID, onChildAdded} from "./firebase-basic.js"
+import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "meetings"
 function getSessionRef(sessionID, path) {
@@ -28,14 +28,15 @@ function usersRef(path) {
 
 async function getHostUID(key){
   let uid = null;
-  for (let trys = 0; trys < 3; trys++){
+  for (let trys = 0; trys < 5; trys++){
     try{
       uid = (await get(getSessionRef(key, "hostUID"))).val();
       return uid;
     } catch(e) {
+      console.log(e);
     }
   }
-  throw "failed to connect to signaling server";
+  throw "Failed to connect to signaling server.";
 }
 
 
@@ -44,6 +45,7 @@ let CurrentSessionKey = null;
 let Listening = false;
 let CandidateListener = null;
 let DescriptionListener = null;
+let HostUIDListener = null;
 let messageHandler = () => {};
 
 
@@ -52,6 +54,7 @@ function removeListeners(){
   Listening = false;
   if (CandidateListener instanceof Function) CandidateListener();
   if (DescriptionListener instanceof Function) DescriptionListener();
+  if (HostUIDListener instanceof Function) HostUIDListener();
 }
 
 
@@ -62,6 +65,15 @@ function addListeners(key, userType){
 
   // Listen to the opisite user type
   let listenTo = userType == "host" ? "participant" : "host"
+
+  let hostUIDRef = getSessionRef(key, "hostUID");
+  HostUIDListener = onValue(hostUIDRef, (sc) => {
+    if (sc.val() == null) {
+      messageHandler({data: {
+        session_ended: true,
+      }})
+    }
+  })
 
   let descriptionRef = getSessionRef(key, `${listenTo}/description`);
   DescriptionListener = onChildAdded(descriptionRef, (sc) => {
@@ -105,6 +117,11 @@ export async function make(){
   return key;
 }
 
+export async function remove(){
+  set(getSessionRef(CurrentSessionKey), null);
+  // removeListeners()
+}
+
 /* Koin session joins the given session key, if forceParticipant is set true
    the user will join as participant otherwise the user will join as a host
    if they are the host or participant if not.
@@ -112,7 +129,7 @@ export async function make(){
 export async function join(key, onmessage, forceParticipant = false) {
   let hostUID = await getHostUID(key);
   if (hostUID == null) {
-    throw "invalid session key"
+    throw "No session exists for this session link."
   }
   if (onmessage instanceof Function) messageHandler = onmessage;
   let asParticipant = !((hostUID == getUID()) && (!forceParticipant));

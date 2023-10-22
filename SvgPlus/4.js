@@ -227,19 +227,9 @@ class SvgPlus{
     }
     this._style_set = typeof this._style_set != 'object' ? {} : this._style_set;
     for (var style in styles){
-      var value = `${styles[style]}`
-      if (value != null){
-        let set = true;
-        try{
-          this.style.setProperty(style, value);
-        }catch(e){
-          set = false;
-          throw e
-        }
-        if (set){
-          this._style_set[style] = value;
-        }
-      }
+      var value = styles[style];
+      this.style.setProperty(style, value);
+      this._style_set[style] = value;
     }
   }
 
@@ -267,17 +257,9 @@ class SvgPlus{
         this.styles = value
       }else if (prop == "innerHTML" || prop == "content") {
         this.innerHTML = value;
-      }else if (value != null){
-        let set = true;
-        try{
-          this.setAttribute(prop,value);
-        }catch(e){
-          set = false;
-          throw e
-        }
-        if (set){
-          this._prop_set[prop] = value;
-        }
+      }else{
+        this.setAttribute(prop,value);
+        this._prop_set[prop] = value;
       }
     }
   }

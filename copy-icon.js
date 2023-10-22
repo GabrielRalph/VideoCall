@@ -1,26 +1,50 @@
 import {SvgPath, SvgPlus, Vector} from "../SvgPlus/svg-path.js"
+import {HideShow, FloatingBox} from "../Utilities/basic-ui.js"
+import {Icons} from "./assets/icons.js"
 
 function delay(t) {
   return new Promise(function(resolve, reject) {
     setTimeout(resolve, t);
   });
 }
-const icon = `<svg width = "1em" viewBox="0 0 14.82 12.9"><defs><style>.cls-1,.cls-2{fill:none;stroke:#fff;stroke-linejoin:round;stroke-width:1.5px;}.cls-2{stroke-linecap:round;}</style></defs><circle class="cls-1" cx="10.76" cy="4.06" r="3.31"/><polyline class="cls-2" points="8.42 6.39 4.42 10.4 2.83 11.99 .75 9.91"/><line class="cls-2" x1="4.71" y1="10.11" x2="1.97" y2="7.38"/></svg>`
 class CopyIcon extends SvgPlus {
   constructor(el = "copy-icon"){
     super(el);
-    this.styles = {display: "flex", "align-items": "center"}
+    this.styles = {display: "flex", "align-items": "center", "position": "relative"}
     this.innerHTML = "";
-    this.svg = this.createChild("svg", {viewBox: "0 0 0.1 100", styles: {height: "1em"}});
-    this.icon = this.createChild("div", {content: icon});
-
+    this.svg = new SvgPlus("svg");
+    this.svg.props = {
+      viewBox: "0 0 0.1 100",
+      class: "copy-text",
+      styles: {
+        position: "fixed",
+      }
+    };
+    this.icon = this.createChild("div", {class: "icon", content: Icons["key"]});
   }
 
-  async showText(value, textValue = value) {
+  async showText(value = this.getAttribute("value"), textValue = this.getAttribute("text")) {
+    if (!textValue) textValue = value;
+    if (this.moving) return;
+    this.moving = true;
+
     if (this.hideText instanceof Function) {
       this.hideText();
     } else {
       let {svg} = this;
+      document.body.appendChild(svg);
+      let bbi = this.icon.bbox
+      let pos = this.bbox[0];
+      pos.x = bbi[0].x;
+      let left = 0;
+      if (pos.x < window.innerWidth/2) left = 1;
+      svg.toggleAttribute("left", left == 1)
+      svg.styles = {
+        top: `${pos.y}px`,
+        left: `${pos.x + bbi[1].x * left}px`,
+        transform: `translate(${-100*(1-left)}%, 0)`,
+      };
+
       let styles = getComputedStyle(this);
       let color = styles.color;
       let margin = parseFloat(this.getAttribute("margin") | 35);
@@ -34,7 +58,6 @@ class CopyIcon extends SvgPlus {
         style: {
           "font-family": "inherit",
           "color": "inherit",
-
         }
       });
       await this.waveTransition((a) => {
@@ -43,14 +66,19 @@ class CopyIcon extends SvgPlus {
         svg.props = {viewBox: `0 0 ${width} 100`}
       }, 300, true);
 
-      this.hideText = async () => {
+
+      let hide = async () => {
         this.hideText = null;
+        this.moving = true;
         await this.waveTransition((a) => {
           let [tpos, tsize] = text.svgBBox;
           let width = (tsize.x + margin) * a + 0.01;
           svg.props = {viewBox: `0 0 ${width} 100`};
         }, 300, false);
+        svg.remove();
+        this.moving = false;
       }
+
       if (await this.copy(value)) {
         await this.waveTransition((a) => {
           this.styles = {opacity: a};
@@ -59,7 +87,11 @@ class CopyIcon extends SvgPlus {
           this.styles = {opacity: a};
         }, 100, true);
         await delay(500);
-        await this.hideText();
+        await hide();
+        this.moving = false;
+      } else {
+        this.moving = false;
+        this.hideText = hide;
       }
     }
   }
@@ -87,23 +119,19 @@ class CopyIcon extends SvgPlus {
   }
 
   onclick(){
-    let value = this.getAttribute("value");
-    let text = this.getAttribute("text");
-    if (!text) text = value;
 
-    // value = Function("", `"use strict";return (${value});`)();
-    // text = Function("", `"use strict";return (${text});`)();
-
-    this.showText(value, text);
+    this.showText();
   }
 
 }
 
 
 
-class WaveyCircleLoader extends SvgPlus {
+class WaveyCircleLoader extends FloatingBox {
   constructor(el = "loader"){
     super(el);
+    this.pointer_events = false;
+    this.styles = {"pointer-events": "none"}
     this.styles = {display: "block"};
     let r = 10;
     let rpad = r * 1.2;
@@ -120,6 +148,9 @@ class WaveyCircleLoader extends SvgPlus {
       "text-anchor": "middle",
       y: 1
     })
+    this.setText = (value) => {
+      text.innerHTML = value;
+    }
     let main = svg.createChild("g", {style: {
       "stroke": "black",
       "fill": "none",

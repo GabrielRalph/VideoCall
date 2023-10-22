@@ -43,14 +43,18 @@ if (DUID == null) {
 }
 
 let StateListeners = [];
-function initializeFirebase(config = firebaseConfig) {
+async function initializeFirebase(config = firebaseConfig) {
   App = initializeApp(config);
   Database = getDatabase(App);
   Auth = getAuth();
-  onAuthStateChanged(Auth, async (userData) => {
-    console.log("auth state change: user data", userData);
-    if (!(userData != null && User != null && User.uid === userData.uid))
-    authChange(userData);
+  return new Promise((resolve, reject) => {
+    onAuthStateChanged(Auth, async (userData) => {
+      console.log("auth state change: user data", userData);
+      if (!(userData != null && User != null && User.uid === userData.uid))
+      resolve();
+      authChange(userData);
+
+    });
   });
 }
 
@@ -107,6 +111,6 @@ export function getDB(){
   return Database;
 }
 
-initializeFirebase();
+await initializeFirebase();
 
 export {child, ref, get, push, set, onChildAdded, onValue}

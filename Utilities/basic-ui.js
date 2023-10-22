@@ -5,6 +5,7 @@ export class HideShow extends SvgPlus {
   constructor(el = "div") {
     super(el);
     this.shown = false;
+    this.pointer_events = true;
   }
 
 	set opacity(o){
@@ -35,7 +36,7 @@ export class HideShow extends SvgPlus {
     this._shown = !hide;
     if (this.hidden == hide || this._transitioning) return;
     this._transitioning = true;
-    if (!hide) this.styles = {display: "block", opacity: 0}
+    if (!hide) this.styles = {display: null, opacity: 0}
     await this.waveTransition((t) => {
       this.opacity = t;
     }, duration, !hide);
@@ -46,14 +47,18 @@ export class HideShow extends SvgPlus {
 		await this.show(duration, true);
 	}
 
+
+
   set shown(value) {
     value = !value;
     if (value) {
 			this.opacity = 0;
       this.styles = {display: "none"};
+      if (this.pointer_events) this.styles = {"pointer-events": "none"}
     } else {
 			this.opacity = 1;
-      this.styles = {display: "block"};
+      this.styles = {display: null};
+      if (this.pointer_events) this.styles = {"pointer-events": "all"}
     }
 		this.hidden = value;
     this._hidden = value;
@@ -71,11 +76,13 @@ export class FloatingBox extends HideShow {
   constructor(el) {
     super(el);
     this.styles = {
-      "--pad-x": "0.5em",
-      "--pad-y": "0.5em",
+      "--pad-x": "0em",
+      "--pad-y": "0em",
       position: "absolute",
     }
+
   }
+
   set align(v){
     if (!(v instanceof Vector)) {
       if (v in ALIGN_POSITIONS) {
@@ -85,22 +92,19 @@ export class FloatingBox extends HideShow {
 
     if (v instanceof Vector) {
       this._alignment = v.clone();
-      let vp = (new Vector(0.5, 0.5)).sub(v).mul(2);
+      let vp = (new Vector(0.5, 0.5)).sub(v);
       let vyp = v.y * 100 + "%";
       let vxp = v.x * 100 + "%";
       let style = {
         top: `calc(${vyp} + var(--pad-y) * (${vp.y}))`,
-        left: `calc(${vxp} + var(--pad-x) * (${vp.x}))`,
+        left: `calc(${vxp} + var(--pad-x) * (${vp.y}))`,
         transform: `translate(-${vxp}, -${vyp})`
       }
       this.styles = style;
     }
   }
-  get alignment(){return this._alignment}
 
-  static get positions(){
-    return ALIGN_POSITIONS;
-  }
+  get alignment(){return this._alignment}
 }
 
 export class SvgResize extends HideShow {
@@ -166,45 +170,29 @@ class BasePointer extends HideShow {
   }
 
   set position(v) {
-    if (v instanceof Vector) v = v.clone();
-    try {
-      this.setPosition(v);
-    } catch(e) {
-      v = null;
-    }
-
-    this._position = v;
+    this.setPosition(v);
   }
   get position(){
-    let p = this._position;
-    if (p instanceof Vector) p = this._position.clone();
+    let p = new Vector(0);
+    if (this._position instanceof Vector) p = this._position.clone();
     return p;
   }
-
-  fromRelative(v) {
-    let abs = null;
-    try {
-      let svg = this.ownerSVGElement;
-      abs = new Vector(v.x * svg.W, v.y * svg.H);
-    } catch(e) {}
-    return abs;
-  }
-
   setPosition(v){
-    v = this.fromRelative(v);
-    this.translate(v);
+    let svg = this.ownerSVGElement;
+    try {
+      if (v == null) {
+        this.shown = false;
+      } else {
+        this.props = {
+          transform: `translate(${v.x * svg.W}, ${v.y * svg.H})`,
+        }
+        this._position = v.clone();
+      }
+    } catch (e) {}
   }
-
-  translate(v) {
-    this.props = {
-      transform: `translate(${v.x}, ${v.y})`,
-    }
-  }
-
   async moveTo(end, duration) {
     try {
       let start = this.position;
-      if (!(start instanceof Vector)) start = new Vector(0);
       await transition((t) => {
         this.position = start.mul(1 - t).add(end.mul(t));
       }, duration);
@@ -222,12 +210,6 @@ const POINTERS = {
       this.textel = this.tg.createChild("text", {"text-anchor": "middle", fill: cText});
       this.appendChild(this.tg);
       this.size = size;
-    }
-
-    set color(c){
-      let p = {fill: c};
-      this.circle.props = p;
-      this.circle3.props = p;
     }
 
     async showText(duration = 400) {await this.tg.show(duration)}
@@ -250,69 +232,113 @@ const POINTERS = {
       this.size = size;
     }
 
-    setPosition(v){
-      this.translate(v);
-    }
-
     set size(size) {
       this.circle.props = {r: size};
     }
   },
   blob: class BPointer extends BasePointer {
-    constructor(size, bufferLength = 7){
-      super();
-        // svg filter to create merged blobs
-        this.innerHTML = `
-        <defs>
-          <filter id="filter" x="-20%" y="-20%" width="140%" height="140%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="linearRGB">
-            <feGaussianBlur stdDeviation="0.5 0.5" x="-100%" y="-100%" width="200%" height="200%" in="morphology1" edgeMode="none" result="blur"/>
-            <feComposite in="blur" in2="SourceGraphic" operator="xor" x="-100" y="-100" width="100%" height="100%" result="composite"/>
-            <feComposite in="composite" in2="composite" operator="lighter" x="-100" y="-100" width="100%" height="100%" result="composite1"/>
-          </filter>
-        </defs>
-        `
-        this.g = this.createChild("g", {filter: "url(#filter)"});
-
-        this.positionBuffer = [];
-        this.bufferLength = bufferLength;
-        this.size = size;
-      }
-
-    addPointToBuffer(point) {
-      if (point instanceof Vector) {
-        this.positionBuffer.unshift(point);
-        if (this.positionBuffer.length > this.bufferLength) {
-          this.positionBuffer.pop();
-        }
-      } else {
-        this.positionBuffer.pop();
-      }
+    // constructor(){
+    //   super('svg');
+    //   this.props = {
+    //       class: "cursor",
+    //       viewBox: "-100 -100 200 200"
+    //     }
+    //     this.opacityThreshold = 0.1;
+    //     // svg filter to create merged blobs
+    //     this.innerHTML = `
+    //     <filter id="filter" x="-20%" y="-20%" width="140%" height="140%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="linearRGB">
+    //     	<feGaussianBlur stdDeviation="0.5 0.5" x="-100%" y="-100%" width="200%" height="200%" in="morphology1" edgeMode="none" result="blur"/>
+    //     	<feComposite in="blur" in2="SourceGraphic" operator="xor" x="-100" y="-100" width="100%" height="100%" result="composite"/>
+    //     	<feComposite in="composite" in2="composite" operator="lighter" x="-100" y="-100" width="100%" height="100%" result="composite1"/>
+    //     </filter>`
+    //     this.g = this.createChild("g", {filter: "url(#filter)"});
+    //
+    //     this._position_buffer = [];
+    //     this.smoothingFactor = 10;
+    //     this.positionBufferLength = 5;
+    //     this.pointSizeFactor = 3;
+    //     this.convergenceMax = 1;
+    //     this.convergeRate = 0.001;
+    //     this.convergence = 0.8;
+    //   }
+    //
+    //   set convergence(value){
+    //       if (value < 0) value = 0;
+    //       if (value > this.convergenceMax) value = this.convergenceMax;
+    //       this._convergence = value;
+    //     }
+    //   get convergence() {
+    //       return this._convergence;
+    //     }
+    //
+    //   // smooth point position using exponentially weighted moving average
+    //   smoothPoint(point) {
+    //       let lambda = 2/this.smoothingFactor;
+    //       let {lastpoint} = this;
+    //       if (!(lastpoint instanceof Vector))
+    //         lastpoint = point;
+    //
+    //       if (point instanceof Vector) {
+    //           point = point.mul(lambda).add(lastpoint.mul(1 - lambda));
+    //           this.lastpoint = point.clone();
+    //         }
+    //         return point;
+    //       }
+    //
+    //   addPointToBuffer(point) {
+    //     if (point instanceof Vector) {
+    //         // add point to position buffer
+    //         this._position_buffer.push(point);
+    //         if (this._position_buffer.length > this.positionBufferLength) {
+    //             this._position_buffer.shift();
+    //           }
+    //         }
+    //       }
+    //
+    //   // smooth point and add it to position buffer
+    //   parsePoint(point) {
+    //       let position = super.parsePoint(point);
+    //
+    //       if (position instanceof Vector) {
+    //           let smoothedPosition = this.smoothPoint(position);
+    //           this.addPointToBuffer(smoothedPosition);
+    //           position = smoothedPosition;
+    //         }
+    //
+    //         return position;
+    //       }
+    //
+    //   // position buffer
+    //   get points(){
+    //       return [... this._position_buffer];
+    //     }
+    //
+    //
+    //   render(){
+    //       // // auto converg if no new points have been added
+    //       // if (!this.isNewPosition) {
+    //         //   this.convergence -= this.convergeRate;
+    //         // } else {
+    //           //   this.convergence += this.convergeRate;
+    //           // }
+    //
+    //           super.render();
+    //
+    //           // draw circles for each point in the position buffer
+    //           // relative to the current cursor position
+    //           let {points, g, pointSizeFactor, convergence} = this;
+    //           let html = "";
+    //           let i = 1;
+    //           if (points.length > 0) {
+    //               let {x, y} = points[points.length - 1];
+    //               for (let pos of points) {
+    //                   html += `<circle r = "${i * pointSizeFactor}" cy = "${(pos.y - y) * convergence}" cx = "${(pos.x - x) * convergence}"></circle>`
+    //                   i++;
+    //                 }
+    //                 g.innerHTML = html;
+    //               }
+    //             }
     }
-
-    // smooth point and add it to position buffer
-    setPosition(point) {
-      this.addPointToBuffer(point);
-      if (point) {
-        this.translate(point);
-      }
-      this.render();
-      return point;
-    }
-
-    render(){
-      this.g.innerHTML = "";
-      if (this.positionBuffer.length > 0) {
-        let size = this.size;
-        let p0 = this.positionBuffer[0];
-        this.g.createChild("circle", {r: size});
-        for (let i = 1; i < this.positionBuffer.length; i++) {
-          size /= 1.35;
-          let v = this.positionBuffer[i].sub(p0);
-          this.g.createChild("circle", {r: size, cx: v.x, cy: v.y})
-        }
-      }
-    }
-  }
 }
 
 class Grid extends SvgPlus {
@@ -472,3 +498,5 @@ export class PopUpFrame extends SvgPlus {
     return response;
   }
 }
+
+export {SvgPlus, Vector}
