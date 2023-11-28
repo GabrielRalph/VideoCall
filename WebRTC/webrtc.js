@@ -11,15 +11,32 @@ function makeKeyLink(key, option = null) {
 }
 
 const config = {
-    iceServers: [
-      {
-        urls: [
-          'stun:stun1.l.google.com:19302',
-          'stun:stun2.l.google.com:19302',
-        ],
-      },
-    ],
-    iceCandidatePoolSize: 10,
+  iceServers: [
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:a.relay.metered.ca:80",
+      username: "9d8898c31f5509bf088c97c2",
+      credential: "7m47GpGiXAdXdIqN",
+    },
+    {
+      urls: "turn:a.relay.metered.ca:80?transport=tcp",
+      username: "9d8898c31f5509bf088c97c2",
+      credential: "7m47GpGiXAdXdIqN",
+    },
+    {
+      urls: "turn:a.relay.metered.ca:443",
+      username: "9d8898c31f5509bf088c97c2",
+      credential: "7m47GpGiXAdXdIqN",
+    },
+    {
+      urls: "turn:a.relay.metered.ca:443?transport=tcp",
+      username: "9d8898c31f5509bf088c97c2",
+      credential: "7m47GpGiXAdXdIqN",
+    },
+  ],
+  iceCandidatePoolSize: 10,
 };
 
 let remoteContentStatus = {
