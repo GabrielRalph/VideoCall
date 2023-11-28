@@ -10,33 +10,44 @@ function makeKeyLink(key, option = null) {
   return `${origin}${pathname}?${key}${option}`
 }
 
-const config = {
-  iceServers: [
-    {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:a.relay.metered.ca:80",
-      username: "9d8898c31f5509bf088c97c2",
-      credential: "7m47GpGiXAdXdIqN",
-    },
-    {
-      urls: "turn:a.relay.metered.ca:80?transport=tcp",
-      username: "9d8898c31f5509bf088c97c2",
-      credential: "7m47GpGiXAdXdIqN",
-    },
-    {
-      urls: "turn:a.relay.metered.ca:443",
-      username: "9d8898c31f5509bf088c97c2",
-      credential: "7m47GpGiXAdXdIqN",
-    },
-    {
-      urls: "turn:a.relay.metered.ca:443?transport=tcp",
-      username: "9d8898c31f5509bf088c97c2",
-      credential: "7m47GpGiXAdXdIqN",
-    },
-  ],
-  iceCandidatePoolSize: 10,
+// Calling the REST API TO fetch the TURN Server Credentials
+const response = 
+  await fetch("https://squidly.metered.live/api/v1/turn/credentials?apiKey=90111f9679c2c3b1b3febacf55fc6650aad2");
+
+// Saving the response in the iceServers array
+const iceServers = await response.json();
+
+// Using the iceServers array in the RTCPeerConnection method
+
+   
+let config = {
+  iceServers: iceServers
+//   iceServers: [
+//     {
+//       urls: "stun:stun.relay.metered.ca:80",
+//     },
+//     {
+//       urls: "turn:a.relay.metered.ca:80",
+//       username: "9d8898c31f5509bf088c97c2",
+//       credential: "7m47GpGiXAdXdIqN",
+//     },
+//     {
+//       urls: "turn:a.relay.metered.ca:80?transport=tcp",
+//       username: "9d8898c31f5509bf088c97c2",
+//       credential: "7m47GpGiXAdXdIqN",
+//     },
+//     {
+//       urls: "turn:a.relay.metered.ca:443",
+//       username: "9d8898c31f5509bf088c97c2",
+//       credential: "7m47GpGiXAdXdIqN",
+//     },
+//     {
+//       urls: "turn:a.relay.metered.ca:443?transport=tcp",
+//       username: "9d8898c31f5509bf088c97c2",
+//       credential: "7m47GpGiXAdXdIqN",
+//     },
+//   ],
+//   iceCandidatePoolSize: 10,
 };
 
 let remoteContentStatus = {
