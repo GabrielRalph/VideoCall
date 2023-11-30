@@ -11,44 +11,33 @@ function makeKeyLink(key, option = null) {
 }
 
 // Calling the REST API TO fetch the TURN Server Credentials
-const response = 
-  await fetch("https://squidly.metered.live/api/v1/turn/credentials?apiKey=90111f9679c2c3b1b3febacf55fc6650aad2");
+// const response = 
+//   await fetch("https://squidly.metered.live/api/v1/turn/credentials?apiKey=90111f9679c2c3b1b3febacf55fc6650aad2");
 
-// Saving the response in the iceServers array
-const iceServers = await response.json();
+// // Saving the response in the iceServers array
+// const iceServers = await response.json();
 
 // Using the iceServers array in the RTCPeerConnection method
+async function getIceServers(){
+  return new Promise((resolve, reject) => {
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function(){
+      if(xhr.readyState == 4 && xhr.status == 200){
+          let res = JSON.parse(xhr.responseText);
+          console.log(res)
+          resolve({iceServers: [res.v.iceServers]})
+      }
+    }
+    xhr.open("PUT", "https://global.xirsys.net/_turn/squideye", true);
+    xhr.setRequestHeader ("Authorization", "Basic " + btoa("GabrielRalph:b67b0d36-8f24-11ee-a574-0242ac130002") );
+    xhr.setRequestHeader ("Content-Type", "application/json");
+    xhr.send( JSON.stringify({"format": "urls"}) );
+  })
+}
 
    
-let config = {
-  iceServers: iceServers
-//   iceServers: [
-//     {
-//       urls: "stun:stun.relay.metered.ca:80",
-//     },
-//     {
-//       urls: "turn:a.relay.metered.ca:80",
-//       username: "9d8898c31f5509bf088c97c2",
-//       credential: "7m47GpGiXAdXdIqN",
-//     },
-//     {
-//       urls: "turn:a.relay.metered.ca:80?transport=tcp",
-//       username: "9d8898c31f5509bf088c97c2",
-//       credential: "7m47GpGiXAdXdIqN",
-//     },
-//     {
-//       urls: "turn:a.relay.metered.ca:443",
-//       username: "9d8898c31f5509bf088c97c2",
-//       credential: "7m47GpGiXAdXdIqN",
-//     },
-//     {
-//       urls: "turn:a.relay.metered.ca:443?transport=tcp",
-//       username: "9d8898c31f5509bf088c97c2",
-//       credential: "7m47GpGiXAdXdIqN",
-//     },
-//   ],
-//   iceCandidatePoolSize: 10,
-};
+let config = await getIceServers();
+console.log(config);
 
 let remoteContentStatus = {
   video: null,
