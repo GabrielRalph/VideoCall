@@ -1,44 +1,6 @@
 import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue} from "./firebase-basic.js"
 
-const SESSION_ROOT_KEY = "meetings"
-function getSessionRef(sessionID, path) {
-  let Database = getDB();
-  let sref = null;
-  if (Database != null) {
-    if (typeof sessionID === "string") {
-      sref = ref(Database, SESSION_ROOT_KEY + "/" + sessionID);
-      if (typeof path === "string") sref = child(sref, path);
-    } else {
-      sref = push(ref(Database, SESSION_ROOT_KEY));
-    }
-  }
-  return sref;
-}
-
-function usersRef(path) {
-  let Database = getDB();
-  let uref = null;
-  let uid = getUID();
-  if (uid != null) {
-    uref = ref(Database, 'users/' + uid);
-    if (typeof path === "string") uref = child(uref, path);
-  }
-  return uref;
-}
-
-async function getHostUID(key){
-  let uid = null;
-  for (let trys = 0; trys < 5; trys++){
-    try{
-      uid = (await get(getSessionRef(key, "hostUID"))).val();
-      return uid;
-    } catch(e) {
-      console.log(e);
-    }
-  }
-  throw "Failed to connect to signaling server.";
-}
-
+const SESSION_ROOT_KEY = "meetings";
 
 let UserType = null;
 let CurrentSessionKey = null;
@@ -47,6 +9,39 @@ let CandidateListener = null;
 let DescriptionListener = null;
 let HostUIDListener = null;
 let messageHandler = () => {};
+
+
+function getSessionRef(sessionID, path) {
+  let Database = getDB();
+  let sref = null;
+  if (Database != null) {
+    if (typeof sessionID === "string") {
+      sref = ref(SESSION_ROOT_KEY + "/" + sessionID);
+      if (typeof path === "string") sref = child(sref, path);
+    } else {
+      sref = push(ref(SESSION_ROOT_KEY));
+    }
+  }
+  return sref;
+}
+
+
+async function getHostUID(key){
+  let uid = null;
+  for (let trys = 0; trys < 5; trys++){
+    let uidRef = getSessionRef(key, "hostUID");
+    if (uidRef == null) {
+      throw "Database has not been initialised";
+    }
+    try{
+      uid = (await get(uidRef)).val();
+      return uid;
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  throw "Failed to connect to signaling server.";
+}
 
 
 // remove signaling channel listeners
@@ -63,7 +58,7 @@ function addListeners(key, userType){
   // Unsubscribe any previous listeners
   removeListeners();
 
-  // Listen to the opisite user type
+  // Listen to the oposite user type
   let listenTo = userType == "host" ? "participant" : "host"
 
   let hostUIDRef = getSessionRef(key, "hostUID");
@@ -101,13 +96,12 @@ function addListeners(key, userType){
 
 
 /* Make session creates a new session signaling channel in the database
-   returns the new session key
- */
+   returns the new session key */
 export async function make(){
   let key = null;
   let sessionRef = getSessionRef();
-  key = sessionRef.key;
   try {
+    key = sessionRef.key;
     await set(child(sessionRef, "hostUID"), getUID());
   } catch (e) {
     console.log(e);
@@ -117,15 +111,17 @@ export async function make(){
   return key;
 }
 
+// Reomve session
 export async function remove(){
-  set(getSessionRef(CurrentSessionKey), null);
-  // removeListeners()
+  let sessionRef = getSessionRef(CurrentSessionKey);
+  if (sessionRef != null) {
+    set(sessionRef, null);
+  }
 }
 
-/* Koin session joins the given session key, if forceParticipant is set true
+/* Join session joins the given session key, if forceParticipant is set true
    the user will join as participant otherwise the user will join as a host
-   if they are the host or participant if not.
-*/
+   if they are the host or participant if not. */
 export async function join(key, onmessage, forceParticipant = false) {
   let hostUID = await getHostUID(key);
   if (hostUID == null) {
@@ -138,15 +134,13 @@ export async function join(key, onmessage, forceParticipant = false) {
   addListeners(key, userType);
 }
 
-/* Leave the current session
-*/
+/* Leave the current session */
 export function leave(){
   UserType = null;
   CurrentSessionKey = null;
 }
 
-/* Send WebRTC descriptions or candiates accros signaling channel
-*/
+/* Send WebRTC descriptions or candiates accros signaling channel */
 export async function send({description, candidate}) {
   if (CurrentSessionKey && UserType) {
     let userRef = getSessionRef(CurrentSessionKey, UserType);

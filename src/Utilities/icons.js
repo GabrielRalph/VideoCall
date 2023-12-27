@@ -8,11 +8,12 @@ let Icons = {
   hide: "",
   end: "",
   key: "",
+  game: "",
 }
 
 const DEFAULT_HEIGHT = 17.5;
 for (let name in Icons) {
-  let svgString = await (await fetch(`../assets/i_${name}.svg`)).text();
+  let svgString = await (await fetch(`../Assets/i_${name}.svg`)).text();
   let svg = SvgPlus.parseSVGString(svgString);
   for (let e of svg.querySelectorAll("defs, style, script"))e.remove();
   for (let e of svg.querySelectorAll("*")) {

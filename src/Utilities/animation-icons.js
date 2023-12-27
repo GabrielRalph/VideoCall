@@ -1,6 +1,6 @@
 import {SvgPath, SvgPlus, Vector} from "../SvgPlus/svg-path.js"
-import {HideShow, FloatingBox} from "../Utilities/basic-ui.js"
-import {Icons} from "./assets/icons.js"
+import {HideShow, FloatingBox} from "./basic-ui.js"
+import {Icons} from "./icons.js"
 
 function delay(t) {
   return new Promise(function(resolve, reject) {
@@ -10,7 +10,6 @@ function delay(t) {
 class CopyIcon extends SvgPlus {
   constructor(el = "copy-icon"){
     super(el);
-    this.styles = {display: "flex", "align-items": "center", "position": "relative"}
     this.innerHTML = "";
     this.svg = new SvgPlus("svg");
     this.svg.props = {
@@ -119,7 +118,6 @@ class CopyIcon extends SvgPlus {
   }
 
   onclick(){
-
     this.showText();
   }
 
@@ -214,4 +212,3 @@ class ProgressLoader extends SvgPlus {
 
 
 export {CopyIcon, WaveyCircleLoader, ProgressLoader}
-// SvgPlus.defineHTMLElement(CopyIcon);

@@ -2,226 +2,88 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, minimum-scale=1.0, initial-scale=1" />
+    <link href="../src/WebRTC/video-call-widget.css" rel = "stylesheet"/>
     <title></title>
   </head>
   <body>
-    <rtc-frame>
-      Some Session
-    </rtc-frame>
+    <session-frame>
+    </session-frame>
   </body>
 
   <script type = "module">
-    import {} from "../WebRTC/rtc-frame.js"
+    import {} from "../src/session-frame.js"
+   
 
-
+    // SvgPlus.defineHTMLElement(ToolBar);
   </script>
   <style>
-  :root {
-    --br: 8px;
-    --sp: 2px;
-    --h: 15vh;
-    --wi: 30px;
+    tool-bar {
+      --tool-bar-height: 3em;
+      display: flex;
+      padding: var(--sp);
+      /* gap: var(--sp); */
+      background: var(--wc);
+      border-radius: var(--br);
+      position: fixed;
+      bottom: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+      left: 50%;
+      transform: translate(-50%, 0);
+      height: var(--tool-bar-height);
+      --hsr: 1;
+      font-size:1em;
+      margin: var(--br);
+    }
 
-    --ic1: #cac9c4;
-    --ic2: white;
-    --ic3: #db4a4a;
-    --ic4: #ff4646;
+    tool-bar[top] {
+      top: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+      bottom: auto;
+    }
 
-    --bro: calc(var(--br) + var(--sp));
+    tool-bar .icon {
+      width: var(--tool-bar-height);
+    }
 
-    --fd1: column;
-  }
+ copy-icon {
+  display: flex;
+  align-items: center;
+  position: relative;
+ }
+.icon {
+cursor: pointer;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: space-evenly;
+}
 
-  [dragging] .hs-icon {
-    pointer-events: none;
-  }
+.icon svg {
+  width: 1em;
+}
 
-  [type="participant"] .tools > * {
-    display: none;
-  }
-  .hs-icon {
-    color: white;
-    width: 0;
-    height: 100%;
-    display: flex;
-    flex-direction: var(--fd1);
-    align-items: center;
-    margin: 0;
-    overflow: hidden;
-    border-radius: var(--br);
-  }
+.cali-fill,
+.i-fill {
+fill: var(--ic1);
+}
 
-  .v-container:not([notrans]) .hs-icon{
-    transition: 0.3s ease-in width;
-  }
+.i-end {
+fill: var(--ic3);
+}
 
-  .v-container[landscape] {
-    --wi: 15vh;
-    --h: 30px;
-    --fd1: row;
-    width: var(--wi);
-  }
+*:hover > svg .i-fill {
+fill: var(--ic2);
+}
 
-  .v-container {
-    height: var(--h);
-    position: fixed;
-    top: 10px;
-    left: 50%;
-    display: flex;
-    transform: translate(-100%, 0);
-    background: #252222;
-    border-radius: var(--bro);
-    padding: var(--sp);
-  }
+*:hover>svg .i-end {
+fill: var(--ic4);
+}
 
-  .rel {
-    position: relative;
-    height: 100%;
-    display: flex;
-    gap: var(--sp);
-    overflow: hidden;
-  }
-
-  .v-container[show-icons] .hs-icon, .v-container[small] .hs-icon{
-    width: var(--wi);
-
-  }
-
-  .v-container:not([small])[show-icons] .hs-icon {
-    margin-right: 0;
-    margin-left: var(--sp);
-  }
-
-  .v-container video {
-    border-radius: var(--br);
-    height: 100%;
-  }
+*[remote-calibrating] #cali-fill * {
+fill: red;
+}
 
 
-  .cali-fill, .i-fill{
-    fill: var(--ic1);
-  }
-  .i-end {
-    fill: var(--ic3);
-  }
-  *:hover > svg .i-fill{
-    fill: var(--ic2);
-  }
-  *:hover > svg .i-end{
-    fill: var(--ic4);
-  }
-
-  .v-container[show-icons] .icon-slot{
-    opacity: 1;
-  }
-
-  .hider {
-    width: 100%;
-    cursor: pointer;
-  }
-  [landscape] .hider {
-    height: 100%;
-    width: auto;
-  }
-
-  [landscape] .hider > div {
-    width: var(--sp);
-    margin: calc(var(--sp)*2) calc(var(--br));
-    height: calc(100% - var(--sp)*4);
-  }
-  .hider > div {
-    height: var(--sp);
-    width: auto;
-    background: var(--ic1);
-    border-radius: 10px;
-    margin: calc(var(--br)) calc(var(--sp)*2);
-  }
-  .hider:hover > div {
-    background: var(--ic2);
-  }
-
-  [landscape] .tools {
-
-  }
-  .tools {
-    background: #3a3737;
-    border-radius: var(--br);
-    width: 100%;
-    height: 100%;
-    display: flex;
-    font-size: 1.15em;
-    flex-direction: var(--fd1);
-    align-items: center;
-  }
-
-  .tools > * {
-    height: var(--wi);
-    width: var(--wi);
-  }
-
-  [landscape] .tools > * {
-    height: var(--h);
-    width: var(--h);
-  }
-
-
-  .icon {
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-evenly;
-  }
-
-  .icon svg {
-    width: 1em;
-  }
-
-  .icon-slot {
-    background: #252222cc;
-    border-radius: calc(var(--br) - var(--sp));
-    margin: var(--sp);
-    display: flex;
-    align-items: center;
-    opacity: 0;
-    transition: 0.3s ease-in opacity;
-    cursor: pointer;
-  }
-  .icon-slot svg {
-    height: calc(1.3em * var(--ws));
-    padding: 0.3em;
-  }
-  *[remote-calibrating] #cali-fill * {
-    fill: red;
-  }
-
-  copy-icon {
-    width: 100%;
-    justify-content: space-evenly;
-    cursor: pointer;
-    color: white;
-  }
-  copy-icon > svg {
-    padding: 0.3em;
-    background: #252222;
-  }
-  copy-icon > div {
-    display: flex;
-    align-items: center;
-  }
-
-  .copy-text{
-    font-family: monospace;
-    height: calc(var(--wi)*0.6);
-    padding: calc(var(--wi)*0.2);
-    background: #3a3737;
-    border-radius: var(--br) 0 0 var(--br);
-  }
-  .copy-text[left] {
-    border-radius: 0 var(--br) var(--br) 0;
-
-  }
 
     .btn {
       background: #5e3770;

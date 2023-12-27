@@ -1,0 +1,214 @@
+/* Root style parameters */
+:root {
+    --widget-size: 15vh;
+    --widget-aspect: 4;
+
+    --h: var(--widget-size);
+    --wi: calc(var(--widget-size) / var(--widget-aspect));
+
+    --br: 8px;
+    --sp: 2px;
+   
+
+    --ic1: #cac9c4;
+    --ic2: white;
+    --ic3: #db4a4a;
+    --ic4: #ff4646;
+
+    --wc: #252222;
+    --tbc: #3a3737;
+
+    --bro: calc(var(--br) + var(--sp));
+    --fd1: column;
+
+    font-size: calc(var(--widget-size) / 6);
+}
+
+/* Video Call Widget Style  */
+video-call-widget {
+
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    display: flex;
+    transform: translate(-100%, 0);
+    background: var(--wc);
+    border-radius: var(--bro);
+    padding: var(--sp);
+
+}
+
+video-call-widget[landscape] {
+    --wi: var(--widget-size);
+    --h: calc(var(--widget-size) / var(--widget-aspect));
+    --fd1: row;
+    width: var(--wi);
+}
+
+video-call-widget .rel {
+    position: relative;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+}
+
+video-call-widget .main-content {
+    position: relative;
+    height: 100%;
+    display: flex;
+    gap: var(--sp);
+
+}
+
+/* ~~~~ Side Bar Style ~~~~ */
+.side-bar {
+    color: white;
+    display: flex;
+    width: 0;
+    flex-direction: var(--fd1);
+    align-items: center;
+    margin: 0;
+    overflow: hidden;
+    border-radius: var(--br);
+}
+
+video-call-widget[show-icons] .side-bar,
+video-call-widget[small] .side-bar {
+    width: var(--wi);
+}
+
+video-call-widget:not([small])[show-icons] .side-bar {
+    margin-right: 0;
+    margin-left: var(--sp);
+}
+
+video-call-widget:not([notrans]) .side-bar {
+    transition: 0.3s ease-in width;
+}
+
+[dragging] .side-bar {
+    pointer-events: none;
+}
+
+/* Side Bar Minimise Icon Style */
+.side-bar .minimise {
+    width: 100%;
+    cursor: pointer;
+    
+}
+[landscape] .side-bar .minimise {
+    height: 100%;
+    width: auto;
+}
+
+.side-bar .minimise > div {
+    height: var(--sp);
+    background: var(--ic1);
+    border-radius: 10px;
+    width: calc(100% - var(--br));
+    margin: calc(var(--br)) calc(var(--sp)*2);
+}
+[landscape] .side-bar .minimise > div {
+    margin: calc(var(--sp)*2) calc(var(--br));
+    height: calc(100% - var(--br));
+    width: var(--sp);
+}
+
+.side-bar .minimise:hover > div {
+    background: var(--ic2);
+}
+
+/* Side Bar Tools style */
+.side-bar .tools {
+    background: var(--tbc);
+    border-radius: var(--br);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: var(--fd1);
+    align-items: center;
+}
+  
+.side-bar .tools > * {
+    height: var(--wi);
+    width: var(--wi);
+}
+
+[landscape] .side-bar .tools > * {
+    height: var(--h);
+    width: var(--h);
+}
+
+
+[type="participant"] .side-bar copy-icon,
+[type="participant"] .side-bar .tools > * {
+    display: none;
+}
+
+/* Copy Icon Style */
+copy-icon {
+    width: 100%;
+    justify-content: space-evenly;
+    cursor: pointer;
+    color: white;
+}
+
+copy-icon>svg {
+    padding: 0.3em;
+    background: var(--tbc);
+}
+
+copy-icon>div {
+    display: flex;
+    align-items: center;
+}
+
+.copy-text {
+    font-family: monospace;
+    height: calc(var(--wi)*0.6);
+    padding: calc(var(--wi)*0.2);
+    background: #3a3737;
+    border-radius: var(--br) 0 0 var(--br);
+}
+
+.copy-text[left] {
+    border-radius: 0 var(--br) var(--br) 0;
+}
+
+/* Video Display */
+video-display {
+    display: flex;
+    --ics: calc(var(--wi))
+}
+
+
+video-display video {
+    border-radius: var(--br);
+    height: var(--h);
+    --aspect: 1.33333;
+    width: calc(var(--h) * var(--aspect));
+}
+
+video-call-widget[show-icons] video-display .icon-slot {
+    opacity: 1;
+}
+
+/* Video Display Icon Slot Style */
+video-display .icon-slot {
+    background: #252222cc;
+    border-radius: calc(var(--br) - var(--sp));
+    margin: var(--sp);
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: 0.3s ease-in opacity;
+    cursor: pointer;
+}
+
+video-display .icon-slot svg {
+    height: calc(1em * var(--ws));
+    padding: calc(var(--br) - 2 * var(--sp));
+}
+
+
+

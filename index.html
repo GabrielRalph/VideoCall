@@ -11,20 +11,28 @@
   </body>
 
   <script type = "module">
-    import {WaveyCircleLoader} from "./copy-icon.js"
+    import {WaveyCircleLoader} from "./src/Utilities/animation-icons.js"
+    import * as WebRTC from "./src/WebRTC/webrtc.js"
+
+    // Make and show loader icon
     let loader = new WaveyCircleLoader()
     loader.align = "center";
     document.body.appendChild(loader);
     await loader.show();
-    let VideoCall = await import("./WebRTC/webrtc.js");
+
+    // Initialise firebase
+    await WebRTC.load(true);
+
+    // Hide Loader
     await loader.hide();
     let cntr = document.getElementById("cntr")
     cntr.innerHTML = `<div class = "btn">
       Create Session
     </div>`
 
+    // Create Session key when clicked
     cntr.onclick = async () => {
-      let key = await VideoCall.makeSession();
+      let key = await WebRTC.makeSession();
       console.log(key);
       window.location = "Session/?"+key;
     }
