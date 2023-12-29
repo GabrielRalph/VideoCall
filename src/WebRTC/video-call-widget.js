@@ -108,6 +108,13 @@ class VideoDisplay extends HideShow {
         }
     }
 
+    set type(val) {
+        this.setAttribute("type", val);
+    }
+    get type(){
+        return this.getAttribute("type")
+    }
+
     set srcObject(src) {
         // check for video aspect ratio until it is defined
         let next = () => {
@@ -119,7 +126,7 @@ class VideoDisplay extends HideShow {
             } else {
                 this.shown = true;
             }
-            this.video.styles = {
+            this.styles = {
                 "--aspect": ratio,
             }
         }
@@ -350,11 +357,33 @@ class DragCollapseWidget extends HideShow {
 
 }
 
+export class VideoCallScreen extends HideShow {
+    constructor(el = "video-call-screen"){
+        super(el);
+        this.v1 = this.createChild(VideoDisplay);
+        this.v1.type = "local";
+        this.v2 = this.createChild(VideoDisplay);
+        this.v2.type = "remote";
+
+        addStateListener(this);
+    }
+
+    set state(obj) {
+        if (obj == null) return;
+        if ("type" in obj) {
+            this.setAttribute("type", obj.type)
+            if (!this.shown) this.show();
+        }
+        this.v1.state = obj;
+        this.v2.state = obj;
+    }
+}
+
 export class VideoCallWidget extends DragCollapseWidget {
     constructor(el = "video-call-widget") {
         super(el);
         this.copy_icon = this.tools.createChild(CopyIcon);
-        let end_icon = this.tools.createChild("div", { class: "icon", content: Icons["end"] });
+        let end_icon = this.tools.createChild("div", { class: "icon", type: "end-call", content: Icons["end"] });
         this.v1 = this.main_content.createChild(VideoDisplay);
         this.v1.type = "local";
         this.v2 = this.main_content.createChild(VideoDisplay);
@@ -363,19 +392,12 @@ export class VideoCallWidget extends DragCollapseWidget {
         addStateListener(this);
     }
 
-   
-    makeKey() {
-        let keyi = new CopyIcon();
-        this.tools.prepend(keyi);
-        
-    }
 
     set state(obj) {
         if (obj == null) return;
         if ("type" in obj) {
 
             this.setAttribute("type", obj.type)
-            if (!this.shown) this.show();
 
             this.copy_icon.text = getKey();
             this.copy_icon.value = makeKeyLink(getKey());

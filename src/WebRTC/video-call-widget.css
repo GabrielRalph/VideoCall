@@ -140,8 +140,7 @@ video-call-widget:not([notrans]) .side-bar {
 }
 
 
-[type="participant"] .side-bar copy-icon,
-[type="participant"] .side-bar .tools > * {
+[type="participant"] .side-bar copy-icon{
     display: none;
 }
 
@@ -178,17 +177,25 @@ copy-icon>div {
 /* Video Display */
 video-display {
     display: flex;
-    --ics: calc(var(--wi))
-}
-
-
-video-display video {
-    border-radius: var(--br);
-    height: var(--h);
+    --ics: calc(var(--wi));
     --aspect: 1.33333;
+}
+video-call-widget video-display{
+    height: var(--h);
     width: calc(var(--h) * var(--aspect));
 }
 
+video-display video {
+    width: 100%;
+}
+
+video-call-widget video {
+    border-radius: var(--br);
+}
+
+*[type = "participant"] video-display[type = "remote"] svg {
+    opacity: 0.5;
+}
 video-call-widget[show-icons] video-display .icon-slot {
     opacity: 1;
 }
@@ -211,4 +218,64 @@ video-display .icon-slot svg {
 }
 
 
+/* Video call screen */
 
+video-call-screen {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--wc);
+    padding: var(--br);
+    gap: var(--br);
+    align-items: center;
+    justify-content: center;
+}
+video-call-screen video-display {
+    width: 100%;
+    max-height: 100%;
+
+}
+
+
+/* Tool Bar */
+tool-bar[type = "participant"] .icon[type = "file"]{
+    display: none;
+}
+
+
+/* Feedback Window */
+feedback-window {
+    padding: var(--sp);
+    border-radius: var(--bro);
+    background: var(--wc);
+    display: flex;
+    gap: var(--bro);
+    flex-direction: column;
+}
+feedback-frame {
+    border-radius: var(--br);
+    overflow: hidden;
+    display: block;
+}
+
+feedback-window .message {
+    color: white;
+    text-align: center;
+    margin: 0 var(--br);
+}
+
+feedback-window .buttons {
+    display: flex;
+    justify-content: center;
+    gap: var(--br);
+    margin-bottom: var(--br);
+}
+
+feedback-window .btn {
+    background: var(--tbc);
+    color: white;
+    font-size: inherit;
+}

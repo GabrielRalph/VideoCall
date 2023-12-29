@@ -13,6 +13,10 @@ window.onmousemove = (e) => {
   window.change_flag = true;
 }
 
+export function isPageHidden(){
+  return document.hidden || document.msHidden || document.webkitHidden || document.mozHidden;
+}
+
 export function getCursorPosition(){
   return {x: window.XPos, y: window.YPos}
 }

@@ -1,8 +1,8 @@
 import {SvgPlus, Vector} from "./SvgPlus/4.js"
 import {WaveyCircleLoader} from "./Utilities/animation-icons.js"
-import {FloatingBox, SvgResize} from "./Utilities/basic-ui.js"
+import {FloatingBox, HideShow, SvgResize} from "./Utilities/basic-ui.js"
 import {parallel, getCursorPosition, delay} from "./Utilities/usefull-funcs.js"
-import {VideoCallWidget} from "./WebRTC/video-call-widget.js"
+import {VideoCallScreen, VideoCallWidget} from "./WebRTC/video-call-widget.js"
 import * as WebRTC from "./WebRTC/webrtc.js"
 import {Icons} from "./Utilities/icons.js"
 import * as EyeGaze from "./EyeTracking/Algorithm/EyeGaze.js"
@@ -40,18 +40,17 @@ class ToolBar extends SvgPlus {
   constructor(el = "tool-bar"){
     super(el);
     this.range = 100;
-    this.imute = this.createChild("div", {class: "icon", content: Icons["mute"]});
+    this.imute = this.createChild("div", {class: "icon", type: "audio", content: Icons["mute"]});
     this.imute.onclick = () => WebRTC.muteTrack("audio", "local");
-    this.ivideo = this.createChild("div", {class: "icon", content: Icons["video"]});
+    this.ivideo = this.createChild("div", {class: "icon", type: "video", content: Icons["video"]});
     this.ivideo.onclick = () => WebRTC.muteTrack("video", "local");
-    this.calibrate = this.createChild("div", {class: "icon", content: Icons["calibrate"]});
-    let i4 = this.createChild("div", {class: "icon", content: Icons["end"]});
-    let i5 = this.createChild("div", {class: "icon", content: Icons["hide"]});
-    let i6 = this.createChild("div", {class: "icon", content: Icons["game"]});
+    this.calibrate = this.createChild("div", {class: "icon", type: "calibrate", content: Icons["calibrate"]});
+    let i4 = this.createChild("div", {class: "icon", type: "end-call", content: Icons["end"]});
+    let i5 = this.createChild("div", {class: "icon", type: "file", content: Icons["hide"]});
 
-    let timeout = null;
+    let timeout;
     let tf = () => {
-      if (!this.isMouseOver) {
+      if (!this.isMouseOver || !this.active) {
           this.hide()
           timeout = null;
       } else {
@@ -60,7 +59,7 @@ class ToolBar extends SvgPlus {
     }
 
     window.addEventListener("mousemove", (e) => {
-      if (this.isMouseOver) {
+      if (this.isMouseOver && this.active) {
         this.show();
         tf();
       }
@@ -80,9 +79,14 @@ class ToolBar extends SvgPlus {
   }
 
   set state(state) {
-    if (state != null && "local" in state) {
-      if ("audio_muted" in state.local) this.imute.innerHTML = state.local.audio_muted ? Icons.mute : Icons.unmute
-      if ("video" in state.local) this.imute.innerHTML = state.local.video ? Icons.novideo : Icons.video
+    if (state != null) {
+      if ("local" in state) {
+        if ("audio_muted" in state.local) this.imute.innerHTML = state.local.audio_muted ? Icons.mute : Icons.unmute
+        if ("video" in state.local) this.imute.innerHTML = state.local.video ? Icons.novideo : Icons.video
+      }
+      if ("type" in state) {
+        this.setAttribute("type", state.type);
+      }
     }
   }
 
@@ -117,15 +121,60 @@ class ToolBar extends SvgPlus {
   }
 }
 
+class FeedbackWindow extends FloatingBox {
+  constructor(el = "feedback-window") {
+    super(el);
+    this.frame = this.createChild(FeedbackFrame);
+    this.frame.shown = true;
+    this.message = this.createChild("div", {class: "message", content: "Make sure you're eyes are visible and highlighted with green boxes<br/>"});
+    // this.message.createChild("small", {content: "The two images of you're eyes will be used to track your eyes, make sure they are clear."})
+    let buttons = this.createChild("div", {class: "buttons"});
+    this.cancel = buttons.createChild("div", {class: "btn", content: "cancel"})
+    this.continue = buttons.createChild("div", {class: "btn", content: "continue"})
+    this.align = "center";
+    this.styles = {"width": "50vmin"}
+  }
+
+  async waitClick() {
+    return new Promise((resolve, reject) => {
+      this.cancel.onclick = () => {
+        this.cancel.onclick = null;
+        resolve("cancel");
+      }
+      this.continue.onclick = () => {
+        this.continue.onclick = null;
+        resolve("continue");
+      }
+    })
+  }
+}
+
+/* 
+
+calibrated: true, false
+             1     0
+calibrating: not-calibrating feedback, calibration, results
+                0               1         2           3 
+*/
+
+
 class SessionFrame extends SvgPlus {
   async onconnect(){
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
     this.session_content = this.createChild("div")
+
+  
     this.web_rtc = this.createChild("div");
     this.video_widget = this.web_rtc.createChild(VideoCallWidget);
-    this.tool_bar = this.createChild(ToolBar);
+    this.video_call_screen = this.web_rtc.createChild(VideoCallScreen);
+    this.tool_bar = this.web_rtc.createChild(ToolBar);
+    this.video_widget.addEventListener("move", () => {
+      let ypos = getCursorPosition().y / window.innerHeight;
+      this.tool_bar.top = ypos > 0.5;
+    });
+
 
     let pointers = this.createChild(SvgResize);
     pointers.styles = {
@@ -142,7 +191,10 @@ class SessionFrame extends SvgPlus {
 
     this.calibration_content = this.createChild("div");
     this.calibration_frame = this.calibration_content.createChild(CalibrationFrame);
-    this.feedback_frame = this.calibration_content.createChild(FeedbackFrame);
+    this.feedback_window = this.calibration_content.createChild(FeedbackWindow);
+    this.feedback_window.align = "center"
+    this.feedback_window.continue.onclick = () => this.calibrate();
+    this.feedback_window.cancel.onclick = () => this.cancel_calibration();
     
     this.loader = this.createChild(WaveyCircleLoader);
     this.loader.styles = {width: "30%"};
@@ -158,7 +210,7 @@ class SessionFrame extends SvgPlus {
     WebRTC.addStateListener(this);
     Webcam.addProcessListener((e) => this.onEyePosition(e));
 
-    this.tool_bar.onclick = () => this.calibrate();
+    this.tool_bar.onclick = () => this.start_calibration();
     
     let key = getQueryKey();
     if (key != null) {
@@ -169,6 +221,11 @@ class SessionFrame extends SvgPlus {
       this.error_frame.innerHTML = "This is not a valid session link."
       await parallel(this.loader.hide(), this.error_frame.show());
     }
+  }
+
+
+  async toWidget(){
+    await parallel(this.video_call_screen.hide(), this.video_widget.show());
   }
 
 
@@ -187,6 +244,11 @@ class SessionFrame extends SvgPlus {
       this.blob.position = rel;
       WebRTC.sendData({eye: {x: result.x, y: result.y}})
     }
+
+    WebRTC.sendData({calibrating: this._calibrating})
+    if (this._calibrating == 1 && input.features) {
+      WebRTC.sendData({features: input.features.serialise()})
+    } 
     // const event = new Event("prediction");
     // event.pos = rel;
     // this.dispatchEvent(event);
@@ -196,14 +258,31 @@ class SessionFrame extends SvgPlus {
   set data(data){
     if (data != null) {
       if ("calibrate" in data) {
-        this.calibrate();
+        if (data.calibrate == 1) {
+          this.start_calibration();
+        } else if (data.calibrate == 2){
+          this.calibrate();
+        } else {
+          this.cancel_calibration();
+        }
       } 
+
+      if ("calibrating" in data) {
+       this.calibration_state_host = data.calibrating;
+      }
+
+      if ("calibration_results" in data) {
+        this.calibration_frame.std = data.calibration_results;
+      }
+
       if ("eye" in data) {
-        if (!this.pointers.shown) this.pointers.show();
         let [pos, size] = this.pointers.bbox;
         let rel = (new Vector(data.eye)).mul(size).add(pos);
-        // console.log(rel, da);
         this.blob.position = rel;
+      }
+
+      if ("features" in data) {
+        this.feedback_window.frame.renderFace({features: EyeGaze.deserialiseFeatures(data.features)})
       }
     }
   }
@@ -214,29 +293,90 @@ class SessionFrame extends SvgPlus {
         this.type = state.type;
       }
       if ("status" in state) {
+        if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
+      }
+      if ("remote" in state && this.type == "host") {
+        if ("stream" in state.remote) {
+          this.feedback_window.frame.videoStream = state.remote.stream;
+        }
       }
     }
   }
 
 
+  set calibration_state_host(state) {
+    if (state != this._c_state) {
+      console.log(state, this._c_state);
+      this._c_state = state;
+      switch(state) {
+        case 0:
+          this.feedback_window.hide();
+        case 4: // not calibrated not calibrating
+          this.pointers.show();
+          break;
+        case 1: // calibrated and in feedback
+          this.toWidget();
+          this.pointers.hide();
+          this.feedback_window.show();
+          break;
+        case 2: // not calibrated and calibrating
+          this.feedback_window.hide();
+          this.loader.setText("calibrating")
+          this.loader.show();
+          break;
+        case 3:
+          this.calibration_results();
+          break;
+      }
+    }
+  }
+
+
+  async start_calibration(){
+    if (this.type == "host") {
+      WebRTC.sendData({calibrate: 1})
+    } else {
+      this._calibrating = 1;
+      Webcam.startProcessing();
+      await parallel(this.toWidget(), this.pointers.hide());
+      await this.feedback_window.show();
+    }
+  }
+
+  async cancel_calibration(){
+    if (this.type == "host") {
+      WebRTC.sendData({calibrate: 0})
+    } else {
+      this._calibrating = 0;
+      await this.feedback_window.hide();
+    }
+  }
+
   async calibrate(){
     if (this.type == "host") {
-      WebRTC.sendData({calibrate: true})
+      WebRTC.sendData({calibrate: 2})
     } else {
-      Webcam.startProcessing();
-      this.feedback_frame.size = 0.5;
-      this.feedback_frame.align = "center"
-      await this.feedback_frame.show();
-      await waitClick(this.feedback_frame);
-      await this.feedback_frame.hide();
+      await this.feedback_window.hide();
+      this._calibrating = 2;
       await this.calibration_frame.show();
-      // await delay(10000);
       await this.calibration_frame.calibrate();
+      this._calibrating = 3;
+      WebRTC.sendData({calibration_results: this.calibration_frame.std});
+      await this.calibration_frame.show_results();
       await this.calibration_frame.hide();
+      this._calibrating = 4;
       this.pointers.start();
       await this.pointers.show();
     }
+  }
+
+  async calibration_results(val){
+    await this.loader.hide()
+    await parallel(this.calibration_frame.show(), this.calibration_frame.show_results(val));
+    this.loader.setText("")
+    await this.calibration_frame.hide();
+    await this.pointers.show();
   }
 
 
@@ -254,6 +394,7 @@ class SessionFrame extends SvgPlus {
       // this.videos.setSrc("local", stream);
       try {
         await WebRTC.start(key, stream, forceParticipant);
+        this.video_call_screen.show();
         this.loader.setText("")
       } catch (e) {
         console.log(e);

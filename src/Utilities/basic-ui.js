@@ -1,5 +1,6 @@
 import {SvgPlus, Vector} from "../SvgPlus/4.js"
-import {dotGrid, transition} from "../Utilities/usefull-funcs.js"
+import {dotGrid, transition, isPageHidden} from "../Utilities/usefull-funcs.js"
+
 
 export class HideShow extends SvgPlus {
   constructor(el = "div") {
@@ -32,13 +33,17 @@ export class HideShow extends SvgPlus {
 
   async show(duration = 400, hide = false) {
     // console.log(hide, this.hidden);
+    if (this._shown == !hide || this._transitioning) return;
     this._shown = !hide;
-    if (this.hidden == hide || this._transitioning) return;
     this._transitioning = true;
     if (!hide) this.styles = {display: null, opacity: 0}
-    await this.waveTransition((t) => {
-      this.opacity = t;
-    }, duration, !hide);
+
+    if (!isPageHidden()){
+      await this.waveTransition((t) => {
+        this.opacity = t;
+      }, duration, !hide);
+    }
+
     this.shown = !hide;
     this._transitioning = false;
   }
@@ -47,18 +52,16 @@ export class HideShow extends SvgPlus {
 	}
 
   set shown(value) {
-    value = !value;
     if (value) {
-			this.opacity = 0;
-      this.styles = {display: "none"};
-    } else {
 			this.opacity = 1;
       this.styles = {display: null};
+    } else {
+			this.opacity = 0;
+      this.styles = {display: "none"};
     }
-		this.hidden = value;
-    this._hidden = value;
+    this._shown = value;
   }
-  get shown(){return !this._hidden;}
+  get shown(){return this._shown;}
 }
 
 let ALIGN_POSITIONS = {
@@ -71,8 +74,6 @@ export class FloatingBox extends HideShow {
   constructor(el) {
     super(el);
     this.styles = {
-      "--pad-x": "0.5em",
-      "--pad-y": "0.5em",
       position: "absolute",
     }
   }
@@ -89,8 +90,8 @@ export class FloatingBox extends HideShow {
       let vyp = v.y * 100 + "%";
       let vxp = v.x * 100 + "%";
       let style = {
-        top: `calc(${vyp} + var(--pad-y) * (${vp.y}))`,
-        left: `calc(${vxp} + var(--pad-x) * (${vp.x}))`,
+        top: `calc(${vyp})`,
+        left: `calc(${vxp})`,
         transform: `translate(-${vxp}, -${vyp})`
       }
       this.styles = style;
@@ -363,6 +364,15 @@ export class SvgCanvas extends SvgPlus {
 			display: "inline-flex",
 			width: "100%",
 		}});
+    this.video = rel.createChild("video", {autoplay: true, playinline: true, styles:{
+			position: "absolute",
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
+      width: "100%",
+      height: "100%",
+		}});
     this.canvas = rel.createChild("canvas", {styles: {
 			width: "100%",
 		}});
@@ -470,4 +480,4 @@ export class PopUpFrame extends SvgPlus {
     return response;
   }
 }
-export {Vector}
+export {Vector, SvgPlus}

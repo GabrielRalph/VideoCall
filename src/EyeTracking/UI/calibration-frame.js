@@ -173,13 +173,18 @@ class CalibrationFrame extends HideShow {
 		await this.calibrate_rradjusted();
 		await this.showMessage("Calibrating eye tracking...");
 		let error = Algorithm.trainModel();
-		console.log(error);
+		this.std = error[0].validation.std.norm();
 		await this.hideMessage();
-		let std = error[0].validation.std.norm();
+		
+	}
+
+	async show_results(std = this.std){
 		await this.showMessage(`Model Accuracy ${Math.round(100 - 2 * std * 100)}%`);
-		await delay(5000);
+		await delay(3000);
 		await this.hideMessage();
 	}
+
+
 
 	async show(duration, hide) {
 		if (!hide) {

@@ -1,15 +1,12 @@
 import {Vector} from "../../SvgPlus/4.js"
-import {FloatingBox, SvgCanvas} from "../../Utilities/basic-ui.js"
+import {FloatingBox, HideShow, SvgCanvas, SvgPlus} from "../../Utilities/basic-ui.js"
 import {Webcam} from "../Algorithm/EyeGaze.js"
 
-export class FeedbackFrame extends FloatingBox{
+export class FeedbackFrame extends HideShow{
   constructor(el = "feedback-frame"){
     super(el);
     this.size = 1;
-    this.styles = {
-      overflow: "hidden",
-      "border-radius": "1em",
-    };
+  
     // Eye box
     this.eyebox = this.createChild("div", {styles: {overflow: "hidden", display: "flex", position: "relative"}});
     this.right = this.eyebox.createChild("canvas", {styles: {width: "50%"}});
@@ -18,16 +15,6 @@ export class FeedbackFrame extends FloatingBox{
       // FeedbackFrame
     this.svgCanvas = this.createChild(SvgCanvas);
     Webcam.addProcessListener((input) => this.renderFace(input));
-  }
-
-  set size(size){
-    this._size = size;
-    this.styles = {
-      width: `${size * 100}vmin`
-    }
-  }
-  get size(){
-    return this._size;
   }
 
   hideEyes(){
@@ -49,11 +36,13 @@ export class FeedbackFrame extends FloatingBox{
   }
 
   renderFace(input) {
-    this.svgCanvas.updateCanvas(input.canvas);
-    this.styles = {
-      border: !!input.error ? "2px solid red" : "none",
-      padding: !!input.error ? "0px" : "2px"
-    }
+    let canvas = new SvgPlus("canvas");
+    canvas.width = input.features.videoWidth;
+    canvas.height = input.features.videoHeight;
+    if (input.canvas) {
+      canvas = input.canvas;
+    } 
+    this.svgCanvas.updateCanvas(canvas);
     let features = input.features;
     let svg = this.svgCanvas.svg;
     for (let key of ["left", "right"]) {
@@ -70,16 +59,21 @@ export class FeedbackFrame extends FloatingBox{
     }
   }
 
-  async moveTo(end, size = this.size, duration = 400) {
-    if (typeof end === "string" && end in FloatingBox.positions) end = FloatingBox.positions[end];
-    end = new Vector(end.x, end.y);
-    try {
-      let start = this.alignment;
-      let starts = this.size;
-      await this.waveTransition((t) => {
-        this.align = start.mul(1 - t).add(end.mul(t));
-        this.size = starts * (1-t) + size * t;
-      }, duration, true);
-    } catch (e) {}
+  set videoStream(stream) {
+    console.log(stream);
+    this.svgCanvas.video.srcObject = stream;
   }
+
+  // async moveTo(end, size = this.size, duration = 400) {
+  //   if (typeof end === "string" && end in FloatingBox.positions) end = FloatingBox.positions[end];
+  //   end = new Vector(end.x, end.y);
+  //   try {
+  //     let start = this.alignment;
+  //     let starts = this.size;
+  //     await this.waveTransition((t) => {
+  //       this.align = start.mul(1 - t).add(end.mul(t));
+  //       this.size = starts * (1-t) + size * t;
+  //     }, duration, true);
+  //   } catch (e) {}
+  // }
 }
