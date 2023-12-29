@@ -11,6 +11,9 @@ const MINSIZERATIO = 0.9 // If the width of the eye is less than the min size ra
                          // times the fixed width and height feature extraction
                          // will fail
 
+
+
+
 /** Extract Eye Features, given the eye points object determines a 3D bounding box
     and extracts pixel information from the provided canvas.
  * @param {FacePoints} eyePoints (see FacePointIdxs in FaceMesh.js)
@@ -33,8 +36,10 @@ Features {
 }
 */
 export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
- let features = {};
- let errors = [];
+  let errors = [];
+  let width = canvas.width;
+  let height = canvas.height;
+  let features = {videoHeight: height, videoWidth: width};
  try {
    for (let key of ["left", "right"]) {
      let eyeBox = {warning: "not detected"};
@@ -42,7 +47,10 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
      let pkey = key + "eye";
 
      if (pkey in facePoints) {
-       eyeBox = getEyeBoundingBox(facePoints[pkey], h/w, w * MINSIZERATIO);
+      let eyepoints = facePoints[pkey];
+       eyepoints.width = width;
+       eyepoints.height = height;
+       eyeBox = getEyeBoundingBox(eyepoints, h/w, w * MINSIZERATIO);
        eyePixels = extractEyeBoxPixels(eyeBox, canvas, w, h);
        eyePixels = equalizeHistogram(eyePixels, 5);
        eyePixels = im2double(eyePixels);
@@ -60,7 +68,64 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
    features.errors = e;
  }
 
+ features.serialise = () => serialiseFeatures(features);
+
  return features;
+}
+
+export function deserialiseFeatures(json) {
+  json = JSON.parse(json);
+  let wp = json.wp;
+  let hp = json.hp;
+  
+  let features = {
+    left: {
+      box: deserialiseBox(json.left.box),
+      pixels: deserialisePixels(json.left.pixels, wp, hp)
+    },
+    right: {
+      box: deserialiseBox(json.right.box),
+      pixels: deserialisePixels(json.right.pixels, wp, hp)
+    },
+    videoHeight: json.h,
+    videoWidth: json.w
+  }
+
+  let warnings = ["left", "right"].map((x) => {
+    return features[x].box.warning == null ? "" : `The ${x} eye is ${features[x].box.warning}`
+  }).filter(x => x!= "").join(",");
+  if (warnings != "") features.warnings = warnings;
+  return features;
+}
+
+export function serialiseFeatures(features) {
+  let {left, right} = features;
+  let wp = null;
+  let hp = null;
+  if (left.pixels != null) {
+    wp = left.pixels.width;
+    hp = left.pixels.height;
+  } else if (right.pixels != null) {
+    wp = right.pixels.width;
+    hp = right.pixels.height;
+  }
+
+  let json = {
+    hp: hp,
+    wp: wp,
+    h: features.videoHeight,
+    w: features.videoWidth,
+    left: {
+      box: serialiseBox(left.box),
+      pixels: serialisePixels(left.pixels)
+    },
+    right: {
+      box: serialiseBox(right.box),
+      pixels: serialisePixels(right.pixels)
+    }
+  }
+
+  return JSON.stringify(json)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
@@ -130,7 +195,7 @@ function im2double(utf8){
 export function renderGray(gray, canvas, mult) {
   if (typeof gray === "string") gray = decodeUTF8(gray);
   let ctx = canvas.getContext('2d');
-  let [w, h] = [WIDTH, HEIGHT];
+  let [w, h] = [gray.width, gray.height];
   canvas.width = w;
   canvas.height = h;
   let data = new Uint8ClampedArray(gray.length * 4);
@@ -218,5 +283,65 @@ function getEyeBoundingBox(eyePoints, w2h, minW, h2t = H2T){
   let x4 = new Vector(x43);
   x4.v3d = x43;
 
+  for (let v of [x1, x2, x3, x4]) {
+    if (v.x > eyePoints.width || v.y > eyePoints.height || v.x < 0 || v.y < 0) {
+      warning = "out of frame";
+      break;
+    }
+  }
+
   return {topLeft: x1, bottomLeft: x2, bottomRight: x3, topRight: x4, eyeTop: top, eyeBottom: bottom, warning: warning}
+}
+
+
+
+function serialisePixels(pixels) {
+  let str = null;
+  if (pixels != null) {
+    str = "";
+    for (let pi of pixels) {
+      str += String.fromCharCode(Math.round(pi * 255));
+    }
+  }
+  return str;
+}
+
+function deserialisePixels(str, wp, hp) {
+  let pixels = null;
+  if (str != null) {
+    pixels = new Array(str.length);
+    for(let i = 0; i < str.length; i++) {
+      pixels[i] = str.charCodeAt(i) / 255;
+    }
+    pixels.width = wp;
+    pixels.height = hp;
+    pixels.render = (canvas) => renderGray(pixels, canvas, 255);
+  }
+  return pixels;
+}
+
+function serialiseBox(box){
+  let json = {};
+  for (let key in box){
+    let value = box[key];
+    if (key != "warning") {
+      value = value.v3d.toString();
+    }
+    json[key] = value;
+  }
+  return json;
+}
+
+function deserialiseBox(json) {
+  let box = {};
+  for(let key in json) {
+    let value = json[key];
+    if (key != "warning") {
+      let [x, y, z] = value.split(",");
+      value = new Vector(parseFloat(x), parseFloat(y));
+      value.v3d = new Vector3(parseFloat(x), parseFloat(y), parseFloat(z));
+    }
+    box[key] = value;
+  }
+  return box;
 }

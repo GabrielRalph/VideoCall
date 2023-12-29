@@ -1,5 +1,5 @@
 import * as FaceMesh from "./FeatureExtraction/FaceMesh.js"
-import {extractEyeFeatures} from "./FeatureExtraction/extractEyeFeatures.js"
+import {extractEyeFeatures, deserialiseFeatures, serialiseFeatures} from "./FeatureExtraction/extractEyeFeatures.js"
 import * as Webcam from "../../Utilities/Webcam.js"
 import ModelLibrary from "./Models/ModelLibrary.js"
 
@@ -106,4 +106,4 @@ export function setCalibrationPositionGetter(posGetter) {
 Webcam.setProcess((input) => processFrame(input));
 
 let load = FaceMesh.load;
-export {Webcam, load}
+export {Webcam, load, deserialiseFeatures, serialiseFeatures}
