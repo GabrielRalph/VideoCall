@@ -46,6 +46,7 @@ async function parallel() {
 
 async function nextFrame(){
   return new Promise((resolve, reject) => {
+    setTimeout(resolve, 30);
     window.requestAnimationFrame(resolve);
   })
 }

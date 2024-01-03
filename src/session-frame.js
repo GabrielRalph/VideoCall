@@ -78,6 +78,9 @@ class ToolBar extends SvgPlus {
     })
   }
 
+  /**
+   * @param {{ local: { audio_muted: any; video: any; }; type: any; } | null} state
+   */
   set state(state) {
     if (state != null) {
       if ("local" in state) {
@@ -210,7 +213,7 @@ class SessionFrame extends SvgPlus {
     WebRTC.addStateListener(this);
     Webcam.addProcessListener((e) => this.onEyePosition(e));
 
-    this.tool_bar.onclick = () => this.start_calibration();
+    this.tool_bar.calibrate.onclick = () => this.start_calibration();
     
     let key = getQueryKey();
     if (key != null) {
@@ -240,7 +243,6 @@ class SessionFrame extends SvgPlus {
       if (result.y < 0) result.y = 0;
       let [pos, size] = this.pointers.bbox;
       rel = result.mul(size).add(pos);
-      console.log(rel);
       this.blob.position = rel;
       WebRTC.sendData({eye: {x: result.x, y: result.y}})
     }
@@ -249,12 +251,12 @@ class SessionFrame extends SvgPlus {
     if (this._calibrating == 1 && input.features) {
       WebRTC.sendData({features: input.features.serialise()})
     } 
-    // const event = new Event("prediction");
-    // event.pos = rel;
-    // this.dispatchEvent(event);
   }
 
 
+  /**
+   * @param {{ calibrate: number; calibrating: any; calibration_results: any; eye: number | undefined; features: any; } | null} data
+   */
   set data(data){
     if (data != null) {
       if ("calibrate" in data) {
@@ -287,6 +289,9 @@ class SessionFrame extends SvgPlus {
     }
   }
 
+  /**
+   * @param {{ type: any; status: string; remote: { stream: any; }; } | null} state
+   */
   set state(state){
     if (state != null) {
       if ("type" in state) {
@@ -305,6 +310,10 @@ class SessionFrame extends SvgPlus {
   }
 
 
+
+  /**
+   * @param {Number} state
+   */
   set calibration_state_host(state) {
     if (state != this._c_state) {
       console.log(state, this._c_state);
@@ -336,7 +345,7 @@ class SessionFrame extends SvgPlus {
   async start_calibration(){
     if (this.type == "host") {
       WebRTC.sendData({calibrate: 1})
-    } else {
+    } else if (this._calibrating != 1){
       this._calibrating = 1;
       Webcam.startProcessing();
       await parallel(this.toWidget(), this.pointers.hide());
@@ -356,7 +365,7 @@ class SessionFrame extends SvgPlus {
   async calibrate(){
     if (this.type == "host") {
       WebRTC.sendData({calibrate: 2})
-    } else {
+    } else if (this._calibrating == 1){
       await this.feedback_window.hide();
       this._calibrating = 2;
       await this.calibration_frame.show();
