@@ -1,6 +1,6 @@
 import {Vector} from "../../SvgPlus/4.js"
 import {FloatingBox, HideShow, SvgCanvas, SvgPlus} from "../../Utilities/basic-ui.js"
-import {Webcam} from "../Algorithm/EyeGaze.js"
+// import {Webcam} from "../Algorithm/EyeGaze.js"
 
 export class FeedbackFrame extends HideShow{
   constructor(el = "feedback-frame"){
@@ -14,7 +14,7 @@ export class FeedbackFrame extends HideShow{
 
       // FeedbackFrame
     this.svgCanvas = this.createChild(SvgCanvas);
-    Webcam.addProcessListener((input) => this.renderFace(input));
+    // Webcam.addProcessListener((input) => this.renderFace(input));
   }
 
   hideEyes(){
@@ -35,15 +35,15 @@ export class FeedbackFrame extends HideShow{
     this.showEyes(!!this.eyes_hidden)
   }
 
-  renderFace(input) {
-    let canvas = new SvgPlus("canvas");
-    canvas.width = input.features.videoWidth;
-    canvas.height = input.features.videoHeight;
-    if (input.canvas) {
-      canvas = input.canvas;
+
+  renderFeatures(features, canvas) {
+    if (!canvas) {
+      canvas = new SvgPlus("canvas");
+      canvas.width = features.videoWidth;
+      canvas.height = features.videoHeight;
     } 
     this.svgCanvas.updateCanvas(canvas);
-    let features = input.features;
+
     let svg = this.svgCanvas.svg;
     for (let key of ["left", "right"]) {
       if (features[key].box.topLeft) {
@@ -59,21 +59,11 @@ export class FeedbackFrame extends HideShow{
     }
   }
 
+  /**
+   * @param {any} stream
+   */
   set videoStream(stream) {
     console.log(stream);
     this.svgCanvas.video.srcObject = stream;
   }
-
-  // async moveTo(end, size = this.size, duration = 400) {
-  //   if (typeof end === "string" && end in FloatingBox.positions) end = FloatingBox.positions[end];
-  //   end = new Vector(end.x, end.y);
-  //   try {
-  //     let start = this.alignment;
-  //     let starts = this.size;
-  //     await this.waveTransition((t) => {
-  //       this.align = start.mul(1 - t).add(end.mul(t));
-  //       this.size = starts * (1-t) + size * t;
-  //     }, duration, true);
-  //   } catch (e) {}
-  // }
 }

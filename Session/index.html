@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0, minimum-scale=1.0, initial-scale=1" />
     <link href="../src/WebRTC/video-call-widget.css" rel = "stylesheet"/>
-    <title></title>
+    <title>Squidly Session</title>
   </head>
   <body>
     <session-frame>
@@ -19,31 +19,7 @@
     // SvgPlus.defineHTMLElement(ToolBar);
   </script>
   <style>
-    tool-bar {
-      --tool-bar-height: 3em;
-      display: flex;
-      padding: var(--sp);
-      /* gap: var(--sp); */
-      background: var(--wc);
-      border-radius: var(--br);
-      position: fixed;
-      bottom: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
-      left: 50%;
-      transform: translate(-50%, 0);
-      height: var(--tool-bar-height);
-      --hsr: 1;
-      font-size:1em;
-      margin: var(--br);
-    }
-
-    tool-bar[top] {
-      top: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
-      bottom: auto;
-    }
-
-    tool-bar .icon {
-      width: var(--tool-bar-height);
-    }
+   
 
  copy-icon {
   display: flex;
@@ -56,6 +32,12 @@ display: flex;
 flex-direction: column;
 align-items: center;
 justify-content: space-evenly;
+text-align: center;
+color: var(--ic1);
+}
+
+.icon:hover {
+  color: var(--ic2);
 }
 
 .icon svg {

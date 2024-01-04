@@ -140,7 +140,7 @@ video-call-widget:not([notrans]) .side-bar {
 }
 
 
-[type="participant"] .side-bar copy-icon{
+[type="participant"] copy-icon{
     display: none;
 }
 
@@ -166,8 +166,12 @@ copy-icon>div {
     font-family: monospace;
     height: calc(var(--wi)*0.6);
     padding: calc(var(--wi)*0.2);
-    background: #3a3737;
+    background: var(--tbc);
     border-radius: var(--br) 0 0 var(--br);
+}
+
+.copy-text[dark] {
+    background: var(--wc);
 }
 
 .copy-text[left] {
@@ -241,10 +245,57 @@ video-call-screen video-display {
 
 
 /* Tool Bar */
-tool-bar[type = "participant"] .icon[type = "file"]{
-    display: none;
-}
+tool-bar {
+    --tool-bar-height: 8vh;
+    display: flex;
+    border: var(--sp) solid var(--tbc);
+    /* gap: var(--sp); */
+    background: var(--wc);
+    border-radius: var(--br);
+    position: fixed;
+    bottom: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+    left: 50%;
+    transform: translate(-50%, 0);
+    height: var(--tool-bar-height);
+    --hsr: 1;
+    font-size:1em;
+    margin: var(--br);
+  }
 
+  tool-bar[top] {
+    top: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+    bottom: auto;
+  }
+
+  tool-bar .tbs {
+    width: var(--tool-bar-height);
+    /* background: var(--tbc); */
+  }
+
+  tool-bar .group {
+    border-left: 2px solid var(--tbc);
+    display: flex;
+  }
+  tool-bar .group[type = "pdf"] {
+    font-size: 0.8em;
+    position: relative;
+  }
+  tool-bar .pdf-count {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--ic2);
+  }
+
+    tool-bar[type = "participant"] .icon[type = "file"],
+    tool-bar[type = "participant"] .group[type = "pdf"]{
+        display: none;
+    }
+
+    tool-bar .icon[type = "audio"]{
+        font-size: 0.78em;
+    }
 
 /* Feedback Window */
 feedback-window {
@@ -279,3 +330,27 @@ feedback-window .btn {
     color: white;
     font-size: inherit;
 }
+
+/* PDF Viewer */
+pdf-viewer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  pdf-viewer > canvas {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  pdf-viewer > img {
+    max-width: 100%;
+    max-height: 100%;
+  }

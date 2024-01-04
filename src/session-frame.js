@@ -1,5 +1,5 @@
 import {SvgPlus, Vector} from "./SvgPlus/4.js"
-import {WaveyCircleLoader} from "./Utilities/animation-icons.js"
+import {WaveyCircleLoader, CopyIcon} from "./Utilities/animation-icons.js"
 import {FloatingBox, HideShow, SvgResize} from "./Utilities/basic-ui.js"
 import {parallel, getCursorPosition, delay} from "./Utilities/usefull-funcs.js"
 import {VideoCallScreen, VideoCallWidget} from "./WebRTC/video-call-widget.js"
@@ -8,6 +8,7 @@ import {Icons} from "./Utilities/icons.js"
 import * as EyeGaze from "./EyeTracking/Algorithm/EyeGaze.js"
 import {CalibrationFrame} from "./EyeTracking/UI/calibration-frame.js"
 import {FeedbackFrame} from "./EyeTracking/UI/feedback-frame.js"
+import {PdfViewer} from "./PDF/pdf-viewer.js"
 const Webcam = EyeGaze.Webcam;
 
 
@@ -36,21 +37,47 @@ async function waitClick(elem){
 }
 
 
+
 class ToolBar extends SvgPlus {
   constructor(el = "tool-bar"){
     super(el);
     this.range = 100;
-    this.imute = this.createChild("div", {class: "icon", type: "audio", content: Icons["mute"]});
+    this.copy_icon = this.createChild(CopyIcon);
+    this.copy_icon.class = "tbs"
+    this.copy_icon.flip = true;
+    this.copy_icon.svg.toggleAttribute("dark", true);
+    this.copy_icon.onclick = async () => {
+      this.keyanim = true;
+      this.copy_icon.text = WebRTC.getKey();
+      this.copy_icon.value = WebRTC.makeKeyLink(WebRTC.getKey());
+      await this.copy_icon.showText();
+      this.keyanim = false;
+    }
+
+    this.imute = this.createChild("div", {class: "icon tbs", type: "audio", content: Icons["mute"]});
     this.imute.onclick = () => WebRTC.muteTrack("audio", "local");
-    this.ivideo = this.createChild("div", {class: "icon", type: "video", content: Icons["video"]});
+
+    this.ivideo = this.createChild("div", {class: "icon tbs", type: "video", content: Icons["video"]});
     this.ivideo.onclick = () => WebRTC.muteTrack("video", "local");
-    this.calibrate = this.createChild("div", {class: "icon", type: "calibrate", content: Icons["calibrate"]});
-    let i4 = this.createChild("div", {class: "icon", type: "end-call", content: Icons["end"]});
-    let i5 = this.createChild("div", {class: "icon", type: "file", content: Icons["hide"]});
+
+    this.calibrate = this.createChild("div", {class: "icon tbs", type: "calibrate", content: Icons["calibrate"]});
+
+    let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
+    i4.onclick = () => WebRTC.endSession();
+
+    this.file = this.createChild("div", {class: "icon tbs", type: "file", content: Icons["hide"]});
+
+    let pdf = this.createChild("div", {class: "group", type: "pdf", styles: {display: "none"}});
+    this.left = pdf.createChild("div", {class: "icon tbs", content: "▶", style: {transform:'scale(-1, 1)'} });
+    this.right = pdf.createChild("div", {class: "icon tbs", content: "▶"});
+    this.pdfCount = pdf.createChild("div", {class: "pdf-count", content: "0"})
+    this.pdfGroup = pdf;
+
+    
 
     let timeout;
     let tf = () => {
-      if (!this.isMouseOver || !this.active) {
+      if ((!this.isMouseOver || !this.active) && !this.keyanim) {
           this.hide()
           timeout = null;
       } else {
@@ -66,6 +93,20 @@ class ToolBar extends SvgPlus {
     })
 
     WebRTC.addStateListener(this);
+  }
+
+  updatePDFControls(pdf) {
+    if (pdf && pdf.totalPages > 0) {
+      let {page, totalPages} = pdf;
+      let left = page > 1;
+      let right = page < totalPages;
+      this.pdfCount.innerHTML = `${page}/${totalPages}`;
+      this.left.styles = {opacity: left ? 1 : 0.5, "pointer-events": left ? "all" : "none"};
+      this.right.styles = {opacity: right ? 1 : 0.5, "pointer-events": right ? "all" : "none"};
+      this.pdfGroup.styles = {display: null};
+    } else {
+      this.pdfGroup.styles = {display: "none"};
+    }
   }
 
   onconnect(){
@@ -84,8 +125,9 @@ class ToolBar extends SvgPlus {
   set state(state) {
     if (state != null) {
       if ("local" in state) {
+        console.log(state);
         if ("audio_muted" in state.local) this.imute.innerHTML = state.local.audio_muted ? Icons.mute : Icons.unmute
-        if ("video" in state.local) this.imute.innerHTML = state.local.video ? Icons.novideo : Icons.video
+        if ("video_muted" in state.local) this.ivideo.innerHTML = state.local.video_muted ? Icons.novideo : Icons.video
       }
       if ("type" in state) {
         this.setAttribute("type", state.type);
@@ -136,19 +178,17 @@ class FeedbackWindow extends FloatingBox {
     this.continue = buttons.createChild("div", {class: "btn", content: "continue"})
     this.align = "center";
     this.styles = {"width": "50vmin"}
+    this.buttons = buttons;
   }
 
-  async waitClick() {
-    return new Promise((resolve, reject) => {
-      this.cancel.onclick = () => {
-        this.cancel.onclick = null;
-        resolve("cancel");
-      }
-      this.continue.onclick = () => {
-        this.continue.onclick = null;
-        resolve("continue");
-      }
-    })
+ 
+
+  renderFeatures(features, canvas) {
+    this.buttons.styles = {
+      opacity: features.warning ? 0.5 : 1,
+      "pointer-events": features.warning ? "none" : "all"
+    }
+    this.frame.renderFeatures(features, canvas);
   }
 }
 
@@ -166,7 +206,8 @@ class SessionFrame extends SvgPlus {
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
-    this.session_content = this.createChild("div")
+    this.session_content = this.createChild("div");
+    this.pdf = this.session_content.createChild(PdfViewer);
 
   
     this.web_rtc = this.createChild("div");
@@ -214,7 +255,11 @@ class SessionFrame extends SvgPlus {
     Webcam.addProcessListener((e) => this.onEyePosition(e));
 
     this.tool_bar.calibrate.onclick = () => this.start_calibration();
-    
+    this.tool_bar.file.onclick = () => this.openFile();
+    this.tool_bar.left.onclick = () => this.setPage(-1);
+    this.tool_bar.right.onclick = () => this.setPage(1);
+
+
     let key = getQueryKey();
     if (key != null) {
       let forceParticipant = key.option == "force";
@@ -227,10 +272,18 @@ class SessionFrame extends SvgPlus {
   }
 
 
-  async toWidget(){
-    await parallel(this.video_call_screen.hide(), this.video_widget.show());
+  async toWidget(bool = true){
+    if (this.widgetShown != bool) {
+      this._widgetShown = bool;
+      if (bool) {
+        await parallel(this.video_call_screen.hide(), this.video_widget.show());
+      } else {
+        await parallel(this.video_call_screen.show(), this.video_widget.hide());
+      }
+    }
   }
-
+  get widgetShown(){return this._widgetShown;}
+  set widgetShown(bool){return this.toWidget(bool);}
 
   onEyePosition(input) {
     let {result} = input;
@@ -249,8 +302,37 @@ class SessionFrame extends SvgPlus {
 
     WebRTC.sendData({calibrating: this._calibrating})
     if (this._calibrating == 1 && input.features) {
+      this.feedback_window.renderFeatures(input.features, input.canvas);
       WebRTC.sendData({features: input.features.serialise()})
     } 
+  }
+
+  async openFile(){
+    let file = await this.pdf.openFile();
+    WebRTC.sendFile(file.buffer, file.type);
+    await this.setFile(file);
+  }
+
+
+  async setFile(file){
+    // console.log("setting file ");
+    await this.pdf.loadFile(file);
+    this.tool_bar.updatePDFControls(this.pdf);
+    await this.toWidget()
+  }
+
+
+
+  setPage(direction, inc = true) {
+    if (inc) {
+      this.pdf.page += direction;
+    } else {
+      this.pdf.page = direction;
+    }
+    if (!WebRTC.isPolite()) {
+      WebRTC.sendData({pdf: this.pdf.page})
+    }
+    this.tool_bar.updatePDFControls(this.pdf);
   }
 
 
@@ -269,6 +351,15 @@ class SessionFrame extends SvgPlus {
         }
       } 
 
+      if ("file" in data) {
+        this.setFile(data.file)
+      }
+
+      if ("pdf" in data) {
+        console.log(data.pdf);
+        this.setPage(data.pdf, false)
+      }
+
       if ("calibrating" in data) {
        this.calibration_state_host = data.calibrating;
       }
@@ -284,7 +375,7 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("features" in data) {
-        this.feedback_window.frame.renderFace({features: EyeGaze.deserialiseFeatures(data.features)})
+        this.feedback_window.renderFeatures(EyeGaze.deserialiseFeatures(data.features));
       }
     }
   }
@@ -320,22 +411,26 @@ class SessionFrame extends SvgPlus {
       this._c_state = state;
       switch(state) {
         case 0:
+          this.widgetShown = false;
           this.feedback_window.hide();
-        case 4: // not calibrated not calibrating
+        case 4: // calibrated
+          this.widgetShown = true;
           this.pointers.show();
           break;
         case 1: // calibrated and in feedback
-          this.toWidget();
+          this.widgetShown = true;
           this.pointers.hide();
           this.feedback_window.show();
           break;
         case 2: // not calibrated and calibrating
+          this.widgetShown = false;
           this.feedback_window.hide();
           this.loader.setText("calibrating")
           this.loader.show();
           break;
         case 3:
           this.calibration_results();
+          this.widgetShown = true;
           break;
       }
     }

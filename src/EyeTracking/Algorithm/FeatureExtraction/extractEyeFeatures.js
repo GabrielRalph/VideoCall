@@ -62,7 +62,7 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
      }
      if (eyeBox.warning) errors.push(`The ${key} eye is ${eyeBox.warning}`);
    }
-   if (errors.length != 0) features.errors = errors.join(", ");
+   if (errors.length != 0) features.warning = errors.join(", ");
  } catch (e) {
    console.log(e);
    features.errors = e;
@@ -94,7 +94,7 @@ export function deserialiseFeatures(json) {
   let warnings = ["left", "right"].map((x) => {
     return features[x].box.warning == null ? "" : `The ${x} eye is ${features[x].box.warning}`
   }).filter(x => x!= "").join(",");
-  if (warnings != "") features.warnings = warnings;
+  if (warnings != "") features.warning = warnings;
   return features;
 }
 

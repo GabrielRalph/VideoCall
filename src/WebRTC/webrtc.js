@@ -169,6 +169,7 @@ async function onSignalerReceive({ data: { description, candidate, session_ended
   try {
     if (session_ended) {
       updateHandler("state", "ended")
+      endSession();
     }else if (description) {
       rtc_base_log("description <-- " + description.type);
       rtc_base_log(pc.signalingState);
@@ -280,8 +281,89 @@ function receiveChannelCallback(event) {
   receiveChannel.onclose = handleReceiveChannelStatusChange;
 }
 
+let fileBuffer = {
+
+}
+let sendFileBuffer = [];
+function extractChunk(data) {
+  let chunk = [];
+  let str = "";
+  let delimCount = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === "," && delimCount < 4) {
+      chunk.push(str);
+      str = "";
+      delimCount ++;
+    } else {
+      str += data[i];
+    }
+  }
+  chunk.push(str);
+  return chunk;
+}
+function loadFileChunk(data) {
+  let [key, name, index, length, buffer] = extractChunk(data);
+  length = parseInt(length);
+  index = parseInt(index);
+  let type = key[1]
+  // console.log(`\tReceived chunk [${index+1}/${length}]: ${buffer.length}bytes.`);
+  if (!(name in fileBuffer)) fileBuffer[name] = {};
+
+  fileBuffer[name][index] = buffer;
+
+  let complete = true;
+  for (let i = 0; i < length; i++) {
+    if (!(i in fileBuffer[name])) complete = false;
+  }
+
+  if (!complete && sendChannel && sendChannel.readyState == "open") {
+    sendChannel.send("R");
+  } 
+
+  if (complete) {
+    let buffer = type == "S" ? "" : [];
+    for (let i = 0; i < length; i++) {
+      for (let j = 0; j < fileBuffer[name][i].length; j++) {
+        if (type == "S") {
+          buffer += fileBuffer[name][i][j]
+        } else {
+          buffer.push(fileBuffer[name][i].charCodeAt(j));
+        }
+      }
+    }
+
+    console.log(`Received file "${name}": ${buffer.length}bytes.`);
+
+    // Cast to array buffer
+    if (type == "A") {
+      let uint8buffer = new Uint8Array(buffer);
+      buffer = uint8buffer.buffer;
+      for (let i = 0; i < uint8buffer.length; i++) buffer[i] = uint8buffer[i];
+    }
+
+    let message = {data: {file: {name, buffer}}};
+    updateHandler("data", message);
+  }
+}
+
+function sendFileChunk() {
+  if (sendFileBuffer.length > 0 && sendChannel && sendChannel.readyState == "open") {
+    let chunk = sendFileBuffer.shift();
+    // console.log(`\t sending chunk[${chunk[2]+1}/${chunk[3]}]: ${chunk[4].length}bytes.`);
+    chunk = chunk.join(",");
+    sendChannel.send(chunk);
+  }
+}
+
 function handleReceiveMessage(event) {
-  updateHandler("data", JSON.parse(event.data));
+  // console.log(event.data, event.data[0]);
+  if (event.data[0] == "F") {
+    loadFileChunk(event.data);
+  } else if (event.data == "R") {
+    sendFileChunk();
+  } else {
+    updateHandler("data", JSON.parse(event.data));
+  }
 }
 
 function handleReceiveChannelStatusChange(event) {
@@ -415,6 +497,38 @@ export async function makeSession() {
   return key;
 }
 
+let maxChunkSize = 15e3;
+export function sendFile(buffer, fileName) {
+  // prepare file buffer
+  let type = "S";
+  if (buffer instanceof ArrayBuffer) {
+    buffer = new Uint8Array(buffer);
+    type = "A";
+  }
+
+  console.log(`Sending file "${fileName}": ${buffer.length}bytes.`);
+
+  let chunks = Math.ceil(buffer.length / maxChunkSize);
+
+  let addChunk = (i, str) => {
+    sendFileBuffer.push(["F"+type, fileName, i, chunks, str])
+  }
+  let ci = 0;
+  let chunk = ""
+  for (let i = 0; i < buffer.length; i++) {
+    if (i % maxChunkSize == 0 && i != 0) {
+      addChunk(ci, chunk);
+      chunk = "";
+      ci = ci + 1;
+    }
+    chunk += type == "S" ? buffer[i] : String.fromCharCode(buffer[i]);
+  }
+  addChunk(ci, chunk);
+
+  // send first byte
+  sendFileChunk();
+}
+
 /* Send data across data channel */
 export function sendData(data) {
   let message = {data}
@@ -456,4 +570,14 @@ export function isPolite(){
 
 export function getKey(){
   return RTCSignaler.getKey();
+}
+
+export function endSession(){
+  console.log("end");
+  if (isPolite()) {
+    window.location = "../SessionEnd";
+  } else {
+    RTCSignaler.remove();
+    window.location = "../"
+  }
 }

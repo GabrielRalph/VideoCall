@@ -32,16 +32,23 @@ class CopyIcon extends SvgPlus {
     } else {
       let {svg} = this;
       document.body.appendChild(svg);
-      let bbi = this.icon.bbox
-      let pos = this.bbox[0];
-      pos.x = bbi[0].x;
+      let [pos, size] = this.bbox;
+      let [ipos, isize] = this.icon.bbox;
+      let h = size.y;
+      let y = pos.y;
+      let w = isize.x;
+      let x = ipos.x;
+      
+
       let left = 0;
       if (pos.x < window.innerWidth/2) left = 1;
+      if (this.flip) left = left == 1 ? 0 : 1;
+      
       svg.toggleAttribute("left", left == 1)
       svg.styles = {
-        top: `${pos.y}px`,
-        left: `${pos.x + bbi[1].x * left}px`,
-        transform: `translate(${-100*(1-left)}%, 0)`,
+        top: `${y + h/2}px`,
+        left: `${x + w * left}px`,
+        transform: `translate(${-100*(1-left)}%, -50%)`,
       };
 
       let styles = getComputedStyle(this);

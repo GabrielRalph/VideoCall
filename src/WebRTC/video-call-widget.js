@@ -2,7 +2,7 @@ import { HideShow, Vector } from "../Utilities/basic-ui.js"
 import { Icons } from "../Utilities/icons.js"
 import { CopyIcon } from "../Utilities/animation-icons.js"
 import { elementAtCursor, getCursorPosition } from "../Utilities/usefull-funcs.js"
-import { muteTrack, addStateListener, getKey, makeKeyLink } from "./webrtc.js"
+import { endSession, muteTrack, addStateListener, getKey, makeKeyLink } from "./webrtc.js"
 
 function check_snap(p0, p1) {
     let { innerWidth, innerHeight } = window;
@@ -286,7 +286,6 @@ class DragCollapseWidget extends HideShow {
         let {rel} = this;
         let w1 = rel.bbox[1].x;
         let w0 = this.main_content.bbox[1].x;
-        console.log(w0);
         this.old = rel.waveTransition((t) => {
             rel.styles = { width: `${w0 * t}px` }
             if (t == 1) {
@@ -384,6 +383,7 @@ export class VideoCallWidget extends DragCollapseWidget {
         super(el);
         this.copy_icon = this.tools.createChild(CopyIcon);
         let end_icon = this.tools.createChild("div", { class: "icon", type: "end-call", content: Icons["end"] });
+        end_icon.onclick = () => endSession();
         this.v1 = this.main_content.createChild(VideoDisplay);
         this.v1.type = "local";
         this.v2 = this.main_content.createChild(VideoDisplay);
