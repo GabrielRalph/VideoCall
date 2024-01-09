@@ -76,7 +76,7 @@ export function addAuthChangeListener(obj) {
 // Get user uid, if none exists then the DUID is returned instead
 export function getUID(){
   let uid = DUID;
-  if (User != null) {
+  if (User != null && typeof User !== "string") {
     uid = User.uid;
   }
   console.log(User);
