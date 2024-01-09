@@ -277,6 +277,7 @@ class SessionFrame extends SvgPlus {
 
 
   async toWidget(bool = true){
+    console.log(bool);
     if (this.widgetShown != bool) {
       this._widgetShown = bool;
       if (bool) {
@@ -322,7 +323,8 @@ class SessionFrame extends SvgPlus {
     // console.log("setting file ");
     await this.pdf.loadFile(file);
     this.tool_bar.updatePDFControls(this.pdf);
-    await this.toWidget()
+    console.log("widget");
+    await this.toWidget(true)
   }
 
 
@@ -395,6 +397,9 @@ class SessionFrame extends SvgPlus {
       if ("status" in state) {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
+        if (state.status != "open") {
+          this.toWidget(false);
+        }
       }
       if ("remote" in state && this.type == "host") {
         if ("stream" in state.remote) {
@@ -412,6 +417,10 @@ class SessionFrame extends SvgPlus {
     }
   }
 
+  get hasContent(){
+    return this.pdf.displayType !== null;
+  }
+
 
 
   /**
@@ -423,7 +432,8 @@ class SessionFrame extends SvgPlus {
       this._c_state = state;
       switch(state) {
         case 0:
-          this.widgetShown = false;
+          this.widgetShown = this.hasContent;
+          console.log(this.hasContent);
           this.feedback_window.hide();
         case 4: // calibrated
           this.widgetShown = true;
@@ -466,6 +476,9 @@ class SessionFrame extends SvgPlus {
     } else {
       this._calibrating = 0;
       await this.feedback_window.hide();
+      console.log(this.hasContent);
+      await this.toWidget(this.hasContent);
+
     }
   }
 

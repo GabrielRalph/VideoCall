@@ -89,6 +89,7 @@ class PdfViewer extends SvgPlus {
 		super(el);
 		if (typeof el === "string") this.onconnect();
     this._pageNumber = 1;
+    this._displayType = null;
     this._wait_for_load = new Promise((resolve, reject) => {
       this._end_load = resolve;
     })
@@ -146,6 +147,8 @@ class PdfViewer extends SvgPlus {
 
   async loadFile(file) {
     this.pdfDoc = null;
+    this.displayType = null;
+
     if (file) {
       let type = file.name ? file.name : file.type;
       if (type == "pdf") {
