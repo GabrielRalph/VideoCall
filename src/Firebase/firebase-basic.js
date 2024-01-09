@@ -27,7 +27,7 @@ if (DUID == null) {
    If a listener returns the string "remove" then the listener will be removed */
 function authChangeHandler(user){
   // If the user has changed
-  if (((user == null) != (User == null)) || (user != null && User != null && user.uid != user.uid)) {
+  if (((user == null) != (User == null || typeof User == "string")) || (user != null && User != null && user.uid != user.uid)) {
     // Update the user object
     User = user;
     let newListeners = [];
@@ -79,6 +79,7 @@ export function getUID(){
   if (User != null) {
     uid = User.uid;
   }
+  console.log(User);
   return uid;
 }
 

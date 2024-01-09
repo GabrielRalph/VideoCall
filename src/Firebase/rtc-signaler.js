@@ -94,7 +94,6 @@ function addListeners(key, userType){
   Listening = true;
 }
 
-
 /* Make session creates a new session signaling channel in the database
    returns the new session key */
 export async function make(){

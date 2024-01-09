@@ -5,7 +5,7 @@ let Icons = {
   mute: "",
   unmute: "",
   calibrate: "",
-  hide: "",
+  file: "",
   end: "",
   key: "",
   game: "",

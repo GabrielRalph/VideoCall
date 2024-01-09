@@ -178,6 +178,25 @@ copy-icon>div {
     border-radius: 0 var(--br) var(--br) 0;
 }
 
+/* file load icon */
+file-load-icon {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2em;
+    display: block;
+    padding: var(--sp);
+}
+file-load-icon circle {
+    fill: none;
+    stroke: var(--ic1);
+    stroke-linecap: round;
+}
+file-load-icon svg {
+    background: var(--tbc);
+    border-radius: 100px;
+}
+
 /* Video Display */
 video-display {
     display: flex;

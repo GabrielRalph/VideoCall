@@ -130,7 +130,42 @@ class CopyIcon extends SvgPlus {
 
 }
 
+class FileLoadIcon extends HideShow {
+  constructor(el = "file-load-icon"){
+    super(el)
+    this.innerHTML = Icons["file"];
+    this.svg = new SvgPlus(this.firstChild);
+    this.styles = {display: null};
+    window.requestAnimationFrame(() => {
+      let path = new SvgPlus(this.svg.querySelector("g"));
+      console.log(path);
+      let [pos, size] = [new Vector(0.9,3.5), new Vector(11.4,10)] //path.svgBBox;
+      let r = size.norm() * 0.7;
+      let c = pos.add(size.div(2));
+      let circle = new SvgPlus("circle");
+      this.svg.prepend(circle);
+      circle.props = {cx: c.x, cy: c.y, r: r, "stroke-width": 2};
+      this.circle = circle;
+      this.r = r;
+      r *= 1.3;
+      let s = c.sub(new Vector(r));
+      this.svg.props = {viewBox: `${s.x} ${s.y} ${2*r} ${2*r}`}
+      this.progress = 0.4;
+    })
+    // this.shape = new SvgPlus(this.svg.firstChild);
+    this.svg.createChild("circle");
+    this.styles = {display: "none"};
 
+  }
+
+  set progress(value){
+    let c = 2 * this.r * Math.PI
+    this.circle.props = {
+      "stroke-dashoffset": `${c * 0.25}`,
+      "stroke-dasharray": `${c * value} ${c * (1 - value)}`
+    }
+  }
+}
 
 class WaveyCircleLoader extends FloatingBox {
   constructor(el = "loader"){
@@ -218,4 +253,4 @@ class ProgressLoader extends SvgPlus {
 }
 
 
-export {CopyIcon, WaveyCircleLoader, ProgressLoader}
+export {CopyIcon, WaveyCircleLoader, ProgressLoader, FileLoadIcon}

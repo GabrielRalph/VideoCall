@@ -1,5 +1,5 @@
 import {SvgPlus, Vector} from "./SvgPlus/4.js"
-import {WaveyCircleLoader, CopyIcon} from "./Utilities/animation-icons.js"
+import {WaveyCircleLoader, CopyIcon, FileLoadIcon} from "./Utilities/animation-icons.js"
 import {FloatingBox, HideShow, SvgResize} from "./Utilities/basic-ui.js"
 import {parallel, getCursorPosition, delay} from "./Utilities/usefull-funcs.js"
 import {VideoCallScreen, VideoCallWidget} from "./WebRTC/video-call-widget.js"
@@ -65,7 +65,7 @@ class ToolBar extends SvgPlus {
     let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
     i4.onclick = () => WebRTC.endSession();
 
-    this.file = this.createChild("div", {class: "icon tbs", type: "file", content: Icons["hide"]});
+    this.file = this.createChild("div", {class: "icon tbs", type: "file", content: Icons["file"]});
 
     let pdf = this.createChild("div", {class: "group", type: "pdf", styles: {display: "none"}});
     this.left = pdf.createChild("div", {class: "icon tbs", content: "▶", style: {transform:'scale(-1, 1)'} });
@@ -206,11 +206,11 @@ class SessionFrame extends SvgPlus {
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
-    this.session_content = this.createChild("div");
+    this.session_content = this.createChild("div", {name: "content"});
     this.pdf = this.session_content.createChild(PdfViewer);
 
   
-    this.web_rtc = this.createChild("div");
+    this.web_rtc = this.createChild("div", {name: "webrtc"});
     this.video_widget = this.web_rtc.createChild(VideoCallWidget);
     this.video_call_screen = this.web_rtc.createChild(VideoCallScreen);
     this.tool_bar = this.web_rtc.createChild(ToolBar);
@@ -218,6 +218,9 @@ class SessionFrame extends SvgPlus {
       let ypos = getCursorPosition().y / window.innerHeight;
       this.tool_bar.top = ypos > 0.5;
     });
+    this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
+    // this.fileProgress.show();
+
 
 
     let pointers = this.createChild(SvgResize);
@@ -239,6 +242,7 @@ class SessionFrame extends SvgPlus {
     this.feedback_window.align = "center"
     this.feedback_window.continue.onclick = () => this.calibrate();
     this.feedback_window.cancel.onclick = () => this.cancel_calibration();
+
     
     this.loader = this.createChild(WaveyCircleLoader);
     this.loader.styles = {width: "30%"};
@@ -395,6 +399,14 @@ class SessionFrame extends SvgPlus {
       if ("remote" in state && this.type == "host") {
         if ("stream" in state.remote) {
           this.feedback_window.frame.videoStream = state.remote.stream;
+        }
+      }
+      if ("file" in state) {
+        this.fileProgress.progress = state.file.progress;
+        if (state.file.progress == 1) {
+          setTimeout(() => this.fileProgress.hide(), 1000);
+        } else {
+          this.fileProgress.show();
         }
       }
     }

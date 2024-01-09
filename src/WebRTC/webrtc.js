@@ -1,4 +1,5 @@
 import {Firebase, RTCSignaler} from "../Firebase/firebase.js"
+import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
 
 let initialised = false;
 let localStream = null;
@@ -63,11 +64,11 @@ async function getIceServers(){
 }
 
 
+
 function isStatusReady(){
   let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
   return video && audio && data_send == "open" && data_receive == "open" && ice_state == "connected";
 }
-
 
 let last_state_update = null;
 function updateStateListeners(state_update) {
@@ -117,7 +118,7 @@ function updateHandler(type, data){
       sessionState = "closed";
       remoteContentStatus.sent = false;
       remoteContentStatus.recv = false;
-      state_update = {status: "closed", remote: {stream: null}}
+      state_update = {status: "closed", remote: {stream: null}};
       rtc_l1_log("closed");
     }
     rtc_log_state();
@@ -136,6 +137,10 @@ function updateHandler(type, data){
       sessionState = "open"
       remoteContentStatus.recv = true;
       state_update = {status: "open", remote: {stream: remoteStream}};
+      if (sendBuffer instanceof ChunkSendBuffer) {
+        sendBuffer.reset(getMaxMessageSize());
+        sendChunk(0);
+      }
       rtc_log_state();
       rtc_l1_log("open");
     }
@@ -261,13 +266,33 @@ function ontrackadded({ track, streams }){
   }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATA CHANNEL METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-
-// WebRTC data channel functions
+/* Send message sends a message accros the data channel*/
 function sendMessage(message) {
   if (sendChannel && sendChannel.readyState == "open") {
-    sendChannel.send(JSON.stringify(message));
+    if (typeof message !== "string") {
+      message = JSON.stringify(message);
+    }
+    sendChannel.send(message);
+  }
+}
+
+/* Send message sends a message accros the data channel*/
+function handleReceiveMessage(event) {
+  // console.log(event.data, event.data[0]);
+  switch (event.data[0]) {
+    case "F":
+      loadFileChunk(event.data);
+      break;
+    case "R":
+      onFileChunkResponse(event.data);
+      break;
+    default:
+      updateHandler("data", JSON.parse(event.data));
+      break;
   }
 }
 
@@ -279,91 +304,6 @@ function receiveChannelCallback(event) {
   receiveChannel.onmessage = handleReceiveMessage;
   receiveChannel.onopen = handleReceiveChannelStatusChange;
   receiveChannel.onclose = handleReceiveChannelStatusChange;
-}
-
-let fileBuffer = {
-
-}
-let sendFileBuffer = [];
-function extractChunk(data) {
-  let chunk = [];
-  let str = "";
-  let delimCount = 0;
-  for (let i = 0; i < data.length; i++) {
-    if (data[i] === "," && delimCount < 4) {
-      chunk.push(str);
-      str = "";
-      delimCount ++;
-    } else {
-      str += data[i];
-    }
-  }
-  chunk.push(str);
-  return chunk;
-}
-function loadFileChunk(data) {
-  let [key, name, index, length, buffer] = extractChunk(data);
-  length = parseInt(length);
-  index = parseInt(index);
-  let type = key[1]
-  // console.log(`\tReceived chunk [${index+1}/${length}]: ${buffer.length}bytes.`);
-  if (!(name in fileBuffer)) fileBuffer[name] = {};
-
-  fileBuffer[name][index] = buffer;
-
-  let complete = true;
-  for (let i = 0; i < length; i++) {
-    if (!(i in fileBuffer[name])) complete = false;
-  }
-
-  if (!complete && sendChannel && sendChannel.readyState == "open") {
-    sendChannel.send("R");
-  } 
-
-  if (complete) {
-    let buffer = type == "S" ? "" : [];
-    for (let i = 0; i < length; i++) {
-      for (let j = 0; j < fileBuffer[name][i].length; j++) {
-        if (type == "S") {
-          buffer += fileBuffer[name][i][j]
-        } else {
-          buffer.push(fileBuffer[name][i].charCodeAt(j));
-        }
-      }
-    }
-
-    console.log(`Received file "${name}": ${buffer.length}bytes.`);
-
-    // Cast to array buffer
-    if (type == "A") {
-      let uint8buffer = new Uint8Array(buffer);
-      buffer = uint8buffer.buffer;
-      for (let i = 0; i < uint8buffer.length; i++) buffer[i] = uint8buffer[i];
-    }
-
-    let message = {data: {file: {name, buffer}}};
-    updateHandler("data", message);
-  }
-}
-
-function sendFileChunk() {
-  if (sendFileBuffer.length > 0 && sendChannel && sendChannel.readyState == "open") {
-    let chunk = sendFileBuffer.shift();
-    // console.log(`\t sending chunk[${chunk[2]+1}/${chunk[3]}]: ${chunk[4].length}bytes.`);
-    chunk = chunk.join(",");
-    sendChannel.send(chunk);
-  }
-}
-
-function handleReceiveMessage(event) {
-  // console.log(event.data, event.data[0]);
-  if (event.data[0] == "F") {
-    loadFileChunk(event.data);
-  } else if (event.data == "R") {
-    sendFileChunk();
-  } else {
-    updateHandler("data", JSON.parse(event.data));
-  }
 }
 
 function handleReceiveChannelStatusChange(event) {
@@ -390,7 +330,65 @@ function startMessageChannel(){
   sendChannel.onclose = handleSendChannelStatusChange;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FILE SEND METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+let receiveBuffer = null;
+let sendBuffer = null;
+
+function getMaxMessageSize(){
+  let size = 0;
+  if (pc != null) {
+    size = pc.sctp.maxMessageSize;
+  }
+  return size;
+}
+
+/* Load file chunk, called when a file chunk is received accros the data channel. Sends the 
+   file chunk response. */
+function loadFileChunk(data) {
+  if (receiveBuffer == null) {
+    receiveBuffer = new ChunkReceiveBuffer();
+  }
+
+  try {
+    let response = receiveBuffer.add(data);
+    sendMessage(response);
+  } catch (e) {
+    // Received a new file, discard old file and store the new chunk
+    receiveBuffer = new ChunkReceiveBuffer();
+    let response = receiveBuffer.add(data);
+    sendMessage(response);
+  }
+  updateStateListeners({file: {progress: receiveBuffer.progress}});
+  if (receiveBuffer.complete) {
+    let message = {data: {file: receiveBuffer.result}};
+    receiveBuffer = null;
+    updateHandler("data", message);
+  } 
+}
+
+/* Send chunk, sends a file chunk accros the data channel. Sets a timeout such that if a response is not 
+   received in 20s then the send process is reset. */
+function sendChunk(i = null){
+  let message = sendBuffer.get(i);
+  sendMessage(message)
+}
+
+/* On file chunk response, called when a file chunk response is received accros the data channel
+  i.e. the chunk was received successfuly. Send the next chunk if required. */  
+function onFileChunkResponse(response) {
+  sendBuffer.response(response);
+  updateStateListeners({file: {progress: sendBuffer.progress}})
+  if (!sendBuffer.complete) {
+    sendChunk();
+  }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 
 /* load instantiates the WebRTC Peer connection object. Initialise the firebase database if it has not been done
     already and retreive the ice server provider config.
@@ -497,36 +495,13 @@ export async function makeSession() {
   return key;
 }
 
-let maxChunkSize = 15e3;
-export function sendFile(buffer, fileName) {
-  // prepare file buffer
-  let type = "S";
-  if (buffer instanceof ArrayBuffer) {
-    buffer = new Uint8Array(buffer);
-    type = "A";
+
+export function sendFile(buffer, filename) {
+  sendBuffer = new ChunkSendBuffer(buffer, filename, getMaxMessageSize());
+  if (sessionState == "open") {
+    sendBuffer.reset(getMaxMessageSize());
+    sendChunk(0);
   }
-
-  console.log(`Sending file "${fileName}": ${buffer.length}bytes.`);
-
-  let chunks = Math.ceil(buffer.length / maxChunkSize);
-
-  let addChunk = (i, str) => {
-    sendFileBuffer.push(["F"+type, fileName, i, chunks, str])
-  }
-  let ci = 0;
-  let chunk = ""
-  for (let i = 0; i < buffer.length; i++) {
-    if (i % maxChunkSize == 0 && i != 0) {
-      addChunk(ci, chunk);
-      chunk = "";
-      ci = ci + 1;
-    }
-    chunk += type == "S" ? buffer[i] : String.fromCharCode(buffer[i]);
-  }
-  addChunk(ci, chunk);
-
-  // send first byte
-  sendFileChunk();
 }
 
 /* Send data across data channel */

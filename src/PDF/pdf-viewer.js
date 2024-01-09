@@ -145,7 +145,6 @@ class PdfViewer extends SvgPlus {
 
 
   async loadFile(file) {
-    this._pageNumber = 1;
     this.pdfDoc = null;
     if (file) {
       let type = file.name ? file.name : file.type;
@@ -171,6 +170,7 @@ class PdfViewer extends SvgPlus {
         this.displayType = "canvas";
         return true;
       } catch(e) {
+        console.log(e);
         this._url = null;
         this._pageNumber = null;
         return false;
