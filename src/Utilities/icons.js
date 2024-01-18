@@ -1,20 +1,12 @@
 import {SvgPlus} from "../SvgPlus/4.js"
+import { IconLibrary } from "../../assets/icon-library.js";
 let Icons = {
-  video: "",
-  novideo: "",
-  mute: "",
-  unmute: "",
-  calibrate: "",
-  file: "",
-  end: "",
-  key: "",
-  game: "",
 }
 
 const DEFAULT_HEIGHT = 17.5;
-for (let name in Icons) {
+for (let name in IconLibrary) {
   try {
-    let svgString = await (await fetch(`../assets/i_${name}.svg`)).text();
+    let svgString = IconLibrary[name];
     let svg = SvgPlus.parseSVGString(svgString);
     for (let e of svg.querySelectorAll("defs, style, script"))e.remove();
     for (let e of svg.querySelectorAll("*")) {
