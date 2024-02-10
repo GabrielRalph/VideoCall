@@ -105,7 +105,7 @@ class CopyIcon extends SvgPlus {
   async copy(text){
     let success = false;
     if (!navigator.clipboard) {
-      success = fallbackCopyTextToClipboard(text);
+      // success = fallbackCopyTextToClipboard(text);
     } else {
       try {
         await navigator.clipboard.writeText(text);

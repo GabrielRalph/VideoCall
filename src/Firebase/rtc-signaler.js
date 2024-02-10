@@ -1,6 +1,6 @@
 import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue} from "./firebase-basic.js"
 
-const SESSION_ROOT_KEY = "meetings";
+const SESSION_ROOT_KEY = "sessions";
 
 let UserType = null;
 let CurrentSessionKey = null;
