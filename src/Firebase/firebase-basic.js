@@ -1,11 +1,13 @@
 import {firebaseConfig} from "./firebase-config.js"
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/9.2.0/firebase-app.js'
-import {getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/9.2.0/firebase-auth.js'
-import {getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/9.2.0/firebase-database.js'
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
+import {getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
+import {getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
+import { getFunctions, httpsCallable  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js'
 
 let initialised = false;
 let App = null;
 let Database = null;
+let Functions = null;
 let Auth = null;
 let User = "initialise";
 let StateListeners = [];
@@ -55,6 +57,8 @@ export async function initialise(config = firebaseConfig) {
   App = initializeApp(config);
   Database = getDatabase(App);
   Auth = getAuth();
+  Functions = getFunctions(App, "asia-southeast1");
+
   return new Promise((resolve, reject) => {
     let init = true;
     onAuthStateChanged(Auth, async (userData) => {
@@ -94,5 +98,15 @@ export function getDB(){return Database; }
 
 // Get Ref using database
 export function ref(path) {return _ref(Database, path);}
+
+export async function callFunction(name, data) {
+  let res = null;
+  if (Functions){
+    const func = httpsCallable(Functions, name);
+    res = await func(data);
+  }
+  return res;
+}
+
 
 export {child, get, push, set, onChildAdded, onValue}

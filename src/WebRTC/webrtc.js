@@ -489,11 +489,6 @@ export function addDataListener(callback) {
   }
 }
 
-/* makeSession, creates new session key */
-export async function makeSession() {
-  let key = await RTCSignaler.make();
-  return key;
-}
 
 
 export function sendFile(buffer, filename) {
@@ -547,12 +542,12 @@ export function getKey(){
   return RTCSignaler.getKey();
 }
 
-export function endSession(){
+export async function endSession(){
   console.log("end");
   if (isPolite()) {
     window.location = "../SessionEnd";
   } else {
-    RTCSignaler.remove();
+    await RTCSignaler.remove();
     window.location = "../"
   }
 }

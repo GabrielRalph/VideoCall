@@ -1,4 +1,4 @@
-import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue} from "./firebase-basic.js"
+import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue, callFunction} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "sessions";
 
@@ -94,28 +94,10 @@ function addListeners(key, userType){
   Listening = true;
 }
 
-/* Make session creates a new session signaling channel in the database
-   returns the new session key */
-export async function make(){
-  let key = null;
-  let sessionRef = getSessionRef();
-  try {
-    key = sessionRef.key;
-    await set(child(sessionRef, "hostUID"), getUID());
-  } catch (e) {
-    console.log(e);
-    key = null;
-  }
-
-  return key;
-}
 
 // Reomve session
 export async function remove(){
-  let sessionRef = getSessionRef(CurrentSessionKey);
-  if (sessionRef != null) {
-    set(sessionRef, null);
-  }
+  await callFunction("endSession", {sid: CurrentSessionKey});
 }
 
 /* Join session joins the given session key, if forceParticipant is set true
@@ -126,6 +108,9 @@ export async function join(key, onmessage, forceParticipant = false) {
   if (hostUID == null) {
     throw "No session exists for this session link."
   }
+  let time = (await get(getSessionRef(key, "time"))).val();
+  console.log(new Date(time) + "");
+
   if (onmessage instanceof Function) messageHandler = onmessage;
   let asParticipant = !((hostUID == getUID()) && (!forceParticipant));
 
