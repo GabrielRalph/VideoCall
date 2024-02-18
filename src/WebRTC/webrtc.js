@@ -44,16 +44,44 @@ function rtc_l1_log(str) {
   console.log("%c" + str, 'color: #00a3fd');
 }
 
+
+
 /* Get Ice Server Provider Configuration Info
 */
-async function getIceServers(){
+function getDefaulIceServers(){
+  return {iceServers: [
+    {urls: "stun:stun.l.google.com:19302"},
+    {urls: "stun:stun1.l.google.com:19302"},
+    {urls: "stun:stun2.l.google.com:19302"},
+    {urls: "stun:stun3.l.google.com:19302"},
+    {urls: "stun:stun4.l.google.com:19302"},
+    {urls: "stun:stun01.sipphone.com"},
+    {urls: "stun:stun.ekiga.net"},
+    {urls: "stun:stun.fwdnet.net"},
+    {urls: "stun:stun.ideasip.com"},
+    {urls: "stun:stun.iptel.org"},
+    {urls: "stun:stun.rixtelecom.se"},
+    {urls: "stun:stun.schlund.de"},
+    {urls: "stun:stunserver.org"},
+    {urls: "stun:stun.softjoys.com"},
+    {urls: "stun:stun.voiparound.com"},
+    {urls: "stun:stun.voipbuster.com"},
+    {urls: "stun:stun.voipstunt.com"},
+    {urls: "stun:stun.voxgratia.org"},
+    {urls: "stun:stun.xten.com"}
+  ]}
+}
+
+async function getIceServersXirsys(){
   return new Promise((resolve, reject) => {
     let xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function(){
       if(xhr.readyState == 4 && xhr.status == 200){
           let res = JSON.parse(xhr.responseText);
-          console.log(res)
-          resolve({iceServers: [res.v.iceServers]})
+          if (res.s == "error") 
+            reject("error")
+          else 
+            resolve({iceServers: [res.v.iceServers]})
       }
     }
     xhr.open("PUT", "https://global.xirsys.net/_turn/squideye", true);
@@ -399,7 +427,10 @@ export async function load(onlyFirebase = false){
   await Firebase.initialise();
   if (!onlyFirebase) {
     initialised = true;
-    let config = await getIceServers();
+    let config = getDefaulIceServers();
+    try {config = await getIceServersXirsys()} catch(e) {console.log(e);}
+    console.log(config);
+
     pc = new RTCPeerConnection(config);
     pc.ondatachannel = receiveChannelCallback;
     pc.ontrack = ontrackadded
