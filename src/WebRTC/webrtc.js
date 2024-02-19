@@ -105,7 +105,11 @@ async function getIceServersMetered(){
   return iceServers;
 }
 
-
+async function getIceServers(){
+  let iceServers = getDefaulIceServers();
+  try {iceServers = await getIceServersXirsys()} catch(e) {console.log(e);}
+  return iceServers;
+}
 
 function isStatusReady(){
   let {video, audio, data_send, data_receive, ice_state} = remoteContentStatus;
@@ -441,8 +445,7 @@ export async function load(onlyFirebase = false){
   await Firebase.initialise();
   if (!onlyFirebase) {
     initialised = true;
-    let config = getDefaulIceServers();
-    try {config = await getIceServersMetered()} catch(e) {console.log(e);}
+    let config = await getIceServers();
     console.log(config);
 
     pc = new RTCPeerConnection(config);
