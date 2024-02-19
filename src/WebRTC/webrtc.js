@@ -140,7 +140,7 @@ async function getIceServersMetered(){
 async function getIceServers(){
   let iceServers = getIceServersTwilio();
   // let i2 = await getIceServersXirsys(); 
-  console.log(i2);
+  // console.log(i2);/
   return iceServers;
 }
 
