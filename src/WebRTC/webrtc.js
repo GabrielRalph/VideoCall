@@ -70,7 +70,9 @@ function getDefaulIceServers(){
     {urls: "stun:stun.voxgratia.org"},
     {urls: "stun:stun.xten.com"},
     {urls: "stun:stun.xten.com"},
-    {urls: "turn:13.239.38.47:443", 
+    {urls: "turn:13.239.38.47:443?transport=udp", 
+    credential: "key1", username: "username1"},
+    {urls: "turn:13.239.38.47:443?transport=tcp", 
     credential: "key1", username: "username1"},
     {urls: "stun:stun.xten.com"},
   ]}
@@ -111,7 +113,7 @@ async function getIceServersMetered(){
 
 async function getIceServers(){
   let iceServers = getDefaulIceServers();
-  // try {iceServers = await getIceServersXirsys()} catch(e) {console.log(e);}
+  try {let i2 = await getIceServersXirsys(); console.log(i2);} catch(e) {console.log(e);}
   return iceServers;
 }
 
