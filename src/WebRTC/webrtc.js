@@ -91,6 +91,18 @@ async function getIceServersXirsys(){
   })
 }
 
+async function getIceServersMetered(){
+  // Calling the REST API TO fetch the TURN Server Credentials
+  let response = await fetch("https://squidly.metered.live/api/v1/turn/credentials?apiKey=90111f9679c2c3b1b3febacf55fc6650aad2");
+
+  // Saving the response in the iceServers array
+  let iceServers = await response.json();
+
+  console.log(iceServers);
+
+  return iceServers;
+}
+
 
 
 function isStatusReady(){
@@ -428,7 +440,7 @@ export async function load(onlyFirebase = false){
   if (!onlyFirebase) {
     initialised = true;
     let config = getDefaulIceServers();
-    try {config = await getIceServersXirsys()} catch(e) {console.log(e);}
+    try {config = await getIceServersMetered()} catch(e) {console.log(e);}
     console.log(config);
 
     pc = new RTCPeerConnection(config);
