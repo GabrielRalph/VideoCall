@@ -560,6 +560,10 @@ export async function start(key, stream, forceParticipant){
   }
   ended = false;
   await RTCSignaler.join(key, onSignalerReceive, forceParticipant)
+
+  setInterval(() => {
+    console.log(pc.getStats());
+  }, 1000)
   remoteStream = null;
   localStream = stream;
   startMessageChannel();
