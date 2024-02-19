@@ -68,7 +68,11 @@ function getDefaulIceServers(){
     {urls: "stun:stun.voipbuster.com"},
     {urls: "stun:stun.voipstunt.com"},
     {urls: "stun:stun.voxgratia.org"},
-    {urls: "stun:stun.xten.com"}
+    {urls: "stun:stun.xten.com"},
+    {urls: "stun:stun.xten.com"},
+    {urls: "turn:13.239.38.47:443", 
+    credential: "key1", username: "username1"},
+    {urls: "stun:stun.xten.com"},
   ]}
 }
 
@@ -107,7 +111,7 @@ async function getIceServersMetered(){
 
 async function getIceServers(){
   let iceServers = getDefaulIceServers();
-  try {iceServers = await getIceServersXirsys()} catch(e) {console.log(e);}
+  // try {iceServers = await getIceServersXirsys()} catch(e) {console.log(e);}
   return iceServers;
 }
 
@@ -562,7 +566,12 @@ export async function start(key, stream, forceParticipant){
   await RTCSignaler.join(key, onSignalerReceive, forceParticipant)
 
   setInterval(async () => {
-    console.log(await pc.getStats());
+    let stats = await pc.getStats();
+    for (let [id, stat] of stats) {
+      if (stat.type == "candidate-pair") {
+        console.log(`sent: ${stat.bytesSent/1024}kB\nrecv: ${stat.bytesReceived/1024}kB`);
+      }
+    }
   }, 1000)
   remoteStream = null;
   localStream = stream;
