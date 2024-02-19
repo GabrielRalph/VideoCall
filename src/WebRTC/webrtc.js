@@ -70,9 +70,9 @@ function getDefaulIceServers(){
     {urls: "stun:stun.voxgratia.org"},
     {urls: "stun:stun.xten.com"},
     {urls: "stun:stun.xten.com"},
-    {urls: "turn:13.239.38.47:443?transport=udp", 
+    {urls: "turn:13.239.38.47:80?transport=udp", 
     credential: "key1", username: "username1"},
-    {urls: "turn:13.239.38.47:443?transport=tcp", 
+    {urls: "turn:13.239.38.47:80?transport=tcp", 
     credential: "key1", username: "username1"},
     {urls: "stun:stun.xten.com"},
   ]}
