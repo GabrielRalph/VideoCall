@@ -73,6 +73,8 @@ function getDefaulIceServers(){
 }
 
 async function getIceServersXirsys(){
+  const appName = "squidlyapp";
+  const appSecret = "joshuaaarons:3bc25f98-cef0-11ee-9e50-0242ac130003";
   return new Promise((resolve, reject) => {
     let xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function(){
@@ -84,8 +86,8 @@ async function getIceServersXirsys(){
             resolve({iceServers: [res.v.iceServers]})
       }
     }
-    xhr.open("PUT", "https://global.xirsys.net/_turn/squideye", true);
-    xhr.setRequestHeader ("Authorization", "Basic " + btoa("GabrielRalph:b67b0d36-8f24-11ee-a574-0242ac130002") );
+    xhr.open("PUT", "https://global.xirsys.net/_turn/" + appName, true);
+    xhr.setRequestHeader ("Authorization", "Basic " + btoa(appSecret) );
     xhr.setRequestHeader ("Content-Type", "application/json");
     xhr.send( JSON.stringify({"format": "urls"}) );
   })
