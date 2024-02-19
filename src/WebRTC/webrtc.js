@@ -45,6 +45,32 @@ function rtc_l1_log(str) {
 }
 
 
+function getIceServersTwilio(){
+  return {iceServers: [
+    {
+      url: 'stun:global.stun.twilio.com:3478',
+      urls: 'stun:global.stun.twilio.com:3478'
+    },
+    {
+      url: 'turn:global.turn.twilio.com:3478?transport=udp',
+      username: 'c84323835421edd034a2fb18c9db112989279a83cf88dcc6bfe66e3d28dcad10',
+      urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+      credential: 'w6u1Q8UNw0Pvq4MeCP9J0bwkl7PdHJUz5RW1RPTEl50='
+    },
+    {
+      url: 'turn:global.turn.twilio.com:3478?transport=tcp',
+      username: 'c84323835421edd034a2fb18c9db112989279a83cf88dcc6bfe66e3d28dcad10',
+      urls: 'turn:global.turn.twilio.com:3478?transport=tcp',
+      credential: 'w6u1Q8UNw0Pvq4MeCP9J0bwkl7PdHJUz5RW1RPTEl50='
+    },
+    {
+      url: 'turn:global.turn.twilio.com:443?transport=tcp',
+      username: 'c84323835421edd034a2fb18c9db112989279a83cf88dcc6bfe66e3d28dcad10',
+      urls: 'turn:global.turn.twilio.com:443?transport=tcp',
+      credential: 'w6u1Q8UNw0Pvq4MeCP9J0bwkl7PdHJUz5RW1RPTEl50='
+    }
+  ]}
+}
 
 /* Get Ice Server Provider Configuration Info
 */
@@ -112,8 +138,9 @@ async function getIceServersMetered(){
 }
 
 async function getIceServers(){
-  let iceServers = getDefaulIceServers();
-  try {let i2 = await getIceServersXirsys(); console.log(i2);} catch(e) {console.log(e);}
+  let iceServers = getIceServersTwilio();
+  // let i2 = await getIceServersXirsys(); 
+  console.log(i2);
   return iceServers;
 }
 
