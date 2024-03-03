@@ -258,7 +258,7 @@ async function onSignalerReceive({ data: { description, candidate, session_ended
     if (session_ended) {
       updateHandler("state", "ended")
       endSession();
-    }else if (contentInfo){
+    }else if (contentInfo || contentInfo === null){
       updateDataListeners({contentInfo});
     }else if (description) {
       rtc_base_log("description <-- " + description.type);

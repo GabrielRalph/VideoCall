@@ -90,10 +90,7 @@ function addListeners(key, userType){
     // Watch content info for the participant
     ContentListener = onValue(contentRef, (sc) => {
       let contentInfo = sc.val();
-      if (contentInfo != null) {
-        console.log(contentInfo);
-        messageHandler({data: {contentInfo}})
-      }
+      messageHandler({data: {contentInfo}})
     })
   }
 
@@ -197,22 +194,26 @@ export async function send({description, candidate}) {
 }
 
 export async function uploadSessionContent(file, callback) {
-  if (file instanceof File) {
+  if (file instanceof File || file == null) {
     // upload content
-    let url = await uploadFileToCloud(file, `/session-content/${getKey()}`, (uts) => {
-      if (callback instanceof Function)
-        callback(uts.bytesTransferred / uts.totalBytes)
-    })
-  
-    // set content info
     let contentRef = getSessionRef(getKey(), "content");
-    let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
-    let page = 1;
-    set(contentRef, {
-      url, 
-      type,
-      page
-    })
+    if (file == null) {
+      set(contentRef, null);
+    } else {
+      let url = await uploadFileToCloud(file, `/session-content/${getKey()}`, (uts) => {
+        if (callback instanceof Function)
+          callback(uts.bytesTransferred / uts.totalBytes)
+      })
+      // set content info
+      let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
+      let page = 1;
+      set(contentRef, {
+        url, 
+        type,
+        page
+      })
+    }
+  
   }
 }
 

@@ -72,13 +72,17 @@ class ToolBar extends SvgPlus {
     fl.props = {class: "icon"};
     this.fileProgress = fl;
 
-    let pdf = this.createChild("div", {class: "group", type: "pdf", styles: {display: "none"}});
-    this.left = pdf.createChild("div", {class: "icon tbs", content: "▶", style: {transform:'scale(-1, 1)'} });
-    this.right = pdf.createChild("div", {class: "icon tbs", content: "▶"});
-    this.pdfCount = pdf.createChild("div", {class: "pdf-count", content: "0"})
+    let pdf = this.createChild("div", {class: "group", styles: {display: "none"}});
+    this.deletePdf = pdf.createChild("div", {class: "icon tbs", content:Icons["trash"]})
+    let sub = pdf.createChild("div", {class: "subgroup", type: "pdf"})
+    this.left = sub.createChild("div", {class: "icon tbs", content: "▶", style: {transform:'scale(-1, 1)'} });
+    this.right = sub.createChild("div", {class: "icon tbs", content: "▶"});
+    this.pdfCount = sub.createChild("div", {class: "pdf-count", content: "0"})
     this.pdfGroup = pdf;
 
-    
+    let image = this.createChild("div", {class: "group", styles: {display: "none"}});
+    this.deleteImage = image.createChild("div", {class: "icon tbs", content:Icons["trash"]})
+    this.imageGroup = image;
 
     let timeout;
     let tf = () => {
@@ -101,7 +105,10 @@ class ToolBar extends SvgPlus {
   }
 
   updatePDFControls(pdf) {
-    if (pdf && pdf.totalPages > 0) {
+    this.imageGroup.styles = {display: "none"};
+    this.pdfGroup.styles = {display: "none"};
+
+    if (pdf && pdf.displayType == "pdf") {
       let {page, totalPages} = pdf;
       let left = page > 1;
       let right = page < totalPages;
@@ -109,8 +116,8 @@ class ToolBar extends SvgPlus {
       this.left.styles = {opacity: left ? 1 : 0.5, "pointer-events": left ? "all" : "none"};
       this.right.styles = {opacity: right ? 1 : 0.5, "pointer-events": right ? "all" : "none"};
       this.pdfGroup.styles = {display: null};
-    } else {
-      this.pdfGroup.styles = {display: "none"};
+    } else if (pdf.displayType == "image") {
+      this.imageGroup.styles = {display: null};
     }
   }
 
@@ -281,6 +288,8 @@ class SessionFrame extends SvgPlus {
     this.tool_bar.file.onclick = () => this.openFile();
     this.tool_bar.left.onclick = () => this.setPage(-1);
     this.tool_bar.right.onclick = () => this.setPage(1);
+    this.tool_bar.deletePdf.onclick = () => this.removeFile();
+    this.tool_bar.deleteImage.onclick = () => this.removeFile();
 
 
     let key = getQueryKey();
@@ -346,12 +355,19 @@ class SessionFrame extends SvgPlus {
     });
   }
 
+  removeFile(){
+    WebRTC.uploadSessionContent(null);
+    this.setFile(null);
+  }
+
 
   async setFile(contentInfo){
     console.log(contentInfo);
     await this.pdf.updateContentInfo(contentInfo);
-    this.tool_bar.updatePDFControls(this.pdf);
-    await this.toWidget(true)
+    if (this.type === "host") {
+      this.tool_bar.updatePDFControls(this.pdf);
+    }
+    await this.toWidget(this.hasContent)
   }
 
   setPage(direction, inc = true) {

@@ -106,7 +106,7 @@ class PdfViewer extends SvgPlus {
 
   set displayType(type) {
     this._displayType = type;
-    this.canvas.styles = {display: type == "canvas" ? null : "none"};
+    this.canvas.styles = {display: type == "pdf" ? null : "none"};
     this.image.styles = {display: type == "image" ? null : "none"};
   }
   get displayType(){
@@ -124,20 +124,24 @@ class PdfViewer extends SvgPlus {
    * @param {String} contentInfo.type
    */
   async updateContentInfo(contentInfo) {
-    let {url, page, type} = contentInfo;
-
-    if (url != this.url) {
-      this.displayType = type;
-      if (type == "pdf") {
-        this.page = page;
-        console.log(this.page, page);
-        await this.loadPDF(url);
-      } else {
-        this.image.props = {src: url};
-        this._url = url;
+    if (contentInfo == null) {
+      this.displayType = null;
+    } else {
+      let {url, page, type} = contentInfo;
+  
+      if (url != this.url) {
+        this.displayType = type;
+        if (type == "pdf") {
+          this.page = page;
+          console.log(this.page, page);
+          await this.loadPDF(url);
+        } else {
+          this.image.props = {src: url};
+          this._url = url;
+        }
+      } else if (page != this.page) {
+          this.page = page;
       }
-    } else if (page != this.page) {
-        this.page = page;
     }
   }
 
@@ -151,7 +155,7 @@ class PdfViewer extends SvgPlus {
         this._url = url;
         if (this.pageNum < 1 || this.pageNum > this.totalPages) this._pageNumber = 1;
         await this.renderPage();
-        this.displayType = "canvas";
+        this.displayType = "pdf";
         return true;
       } catch(e) {
         console.log(e);

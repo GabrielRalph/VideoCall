@@ -290,10 +290,15 @@ tool-bar {
     border-left: 2px solid var(--tbc);
     display: flex;
   }
-  tool-bar .group[type = "pdf"] {
-    font-size: 0.8em;
+  tool-bar .subgroup {
+    display: flex;
     position: relative;
   }
+
+  tool-bar [type = "pdf"] {
+    font-size: 0.8em;
+  }
+
   tool-bar .pdf-count {
     position: absolute;
     top: 50%;
