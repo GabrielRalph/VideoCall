@@ -7,3 +7,4 @@ export const firebaseConfig = {
     messagingSenderId: "56834287411",
     appId: "1:56834287411:web:999340ed2fd5165fa68046"
   };
+export const storageURL = "gs://eyesee-d0a42.appspot.com"

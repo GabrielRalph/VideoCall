@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+   <div></div>
+</body>
+
+<script type = "module">
+    import {Firebase} from "../src/Firebase/firebase.js"
+    import {FileLoadIcon} from "../src/Utilities/animation-icons.js"
+    let svg = document.querySelector("div");
+    let i = svg.appendChild(new FileLoadIcon());
+
+    await Firebase.initialise();
+    await Firebase.callFunction("getLogo", {})
+    let url = await Firebase.getFile("logo.svg");
+    console.log(url);
+    setTimeout(async () => {
+        url = await Firebase.getFile("logo.svg");
+        console.log(url);
+
+    }, 55 * 1000)
+
+    // async function frame() {return new Promise((resolve, reject) => window.requestAnimationFrame(resolve))}
+    
+    // await i.show();
+    // for (let a = 0; a <=360; a++) {
+    //    i.progress = a/360;
+    //     await frame();
+    // }
+</script>
+<style>
+    .i-fill {
+        fill: black;
+    }
+    .i-fill.mask-bg {fill:white;}
+    .i-fill.mask-rm {fill:black;}
+</style>
+</html>

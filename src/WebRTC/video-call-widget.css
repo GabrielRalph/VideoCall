@@ -180,22 +180,17 @@ copy-icon>div {
 
 /* file load icon */
 file-load-icon {
-    position: absolute;
+    /* position: absolute;
     top: 0;
     right: 0;
-    width: 2em;
+    width: 2em; */
     display: block;
-    padding: var(--sp);
+    /* padding: var(--sp); */
 }
-file-load-icon circle {
-    fill: none;
-    stroke: var(--ic1);
-    stroke-linecap: round;
-}
-file-load-icon svg {
-    background: var(--tbc);
-    border-radius: 100px;
-}
+
+* > svg > mask .i-fill.mask-bf,  {fill:white;}
+
+* > svg > mask .i-fill.mask-rm {fill:black;}
 
 /* Video Display */
 video-display {

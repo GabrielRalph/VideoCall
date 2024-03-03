@@ -1,5 +1,14 @@
 export const IconLibrary = {
-
+"file-mask": `<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13.2 17.5">
+<mask id="myMask">
+    <rect id = "mask-bg" x = "0" y="0" width="13.2" height="17.5"></rect>
+    <path id ="mask-rm" d="m0,0v17.5h13.2V0H0Zm12.3,10.6c0,1.6-1.3,2.9-2.9,2.9H3.8c-1.6,0-2.9-1.3-2.9-2.9v-4.9c0-1.2,1-2.2,2.2-2.2h3.5c1.13,0,2.07.89,2.18,2h.52c1.7,0,3,1.3,3,2.9v2.2Z"/>
+</mask>
+<g opacity="0.5">
+    <path d="M12.3,8.4v2.2c0,1.6-1.3,2.9-2.9,2.9H3.8c-1.6,0-2.9-1.3-2.9-2.9V8.4c0-1.6,1.3-2.9,2.9-2.9h5.5C11,5.5,12.3,6.8,12.3,8.4z"/>
+    <path d="M0.9,9.3l3.5-2.1l4.4-1.5c0-1.2-1-2.2-2.2-2.2H3.1c-1.2,0-2.2,1-2.2,2.2C0.9,5.7,0.9,9.3,0.9,9.3z"/>
+</g>
+</svg>`,
 "calibrate": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 27.9.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 15.8 15.9\" style=\"enable-background:new 0 0 15.8 15.9;\" xml:space=\"preserve\">\n<g id=\"cali-fill\">\n\t<g>\n\t\t<path d=\"M7.9,11c-1.7,0-3-1.4-3-3c0-1.7,1.4-3,3-3s3,1.4,3,3C10.9,9.7,9.6,11,7.9,11z M7.9,6.4C7,6.4,6.3,7.1,6.3,8S7,9.6,7.9,9.6\n\t\t\tS9.5,8.9,9.5,8S8.8,6.4,7.9,6.4z\"/>\n\t</g>\n\t<g>\n\t\t<path d=\"M7.9,15.7c-4.3,0-7.7-3.5-7.7-7.7s3.5-7.7,7.7-7.7s7.7,3.5,7.7,7.7S12.1,15.7,7.9,15.7z M7.9,1.6C4.4,1.6,1.6,4.5,1.6,8\n\t\t\ts2.8,6.3,6.3,6.3s6.3-2.8,6.3-6.3S11.4,1.6,7.9,1.6z\"/>\n\t</g>\n</g>\n</svg>\n",
 
 "end": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 27.9.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 13.2 11.7\" style=\"enable-background:new 0 0 13.2 11.7;\" xml:space=\"preserve\">\n<path id=\"i-end\" d=\"M10.7,7.7c-1-0.3-1.4-0.4-1.5-0.9C9,6.5,9,5.7,9,5.7S7.8,5.5,6.6,5.5S4.2,5.8,4.2,5.8s0.1,0.7-0.1,1.1\n\tC3.8,7.3,3.5,7.3,2.5,7.8c-1,0.3-1.7,0.4-2,0.2C0.2,7.8-0.1,6.5,0.2,5.9c0.2-0.7,0.8-1,2.1-1.5c1.4-0.6,2.3-0.8,4.3-0.8\n\ts3,0.1,4.3,0.8c1.3,0.6,1.9,0.9,2.1,1.4c0.3,0.6,0,1.9-0.3,2.1C12.3,8.1,11.7,8,10.7,7.7z\"/>\n</svg>\n",

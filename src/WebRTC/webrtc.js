@@ -7,6 +7,10 @@ let remoteStream = null;
 let sendChannel;
 let receiveChannel;
 let onUpdateHandler = () => {};
+
+/**
+ * @type {RTCPeerConnection}
+ */
 let pc = null;
 let remoteContentStatus = {
   video: null,
@@ -138,7 +142,7 @@ async function getIceServersMetered(){
 }
 
 async function getIceServers(){
-  let iceServers = getIceServersTwilio();
+  let iceServers = getDefaulIceServers();
   // let i2 = await getIceServersXirsys(); 
   // console.log(i2);/
   return iceServers;
@@ -479,7 +483,6 @@ export async function load(onlyFirebase = false){
   if (!onlyFirebase) {
     initialised = true;
     let config = await getIceServers();
-    console.log(config);
 
     pc = new RTCPeerConnection(config);
     pc.ondatachannel = receiveChannelCallback;
@@ -592,8 +595,11 @@ export async function start(key, stream, forceParticipant){
     await load();
   }
   ended = false;
-  await RTCSignaler.join(key, onSignalerReceive, forceParticipant)
+  let iceServers = await RTCSignaler.join(key, onSignalerReceive, forceParticipant);
+  console.log(iceServers);
+  pc.setConfiguration({iceServers});
 
+  // Print Stats
   setInterval(async () => {
     let stats = await pc.getStats();
     for (let [id, stat] of stats) {
@@ -602,12 +608,14 @@ export async function start(key, stream, forceParticipant){
       }
     }
   }, 1000)
+
   remoteStream = null;
   localStream = stream;
   startMessageChannel();
   for (const track of stream.getTracks()) {
     pc.addTrack(track, stream);
   }
+
   updateStateListeners({
     status: "started",
     type: getUserType(),
@@ -618,6 +626,25 @@ export async function start(key, stream, forceParticipant){
     }
   })
   updateHandler("status")
+}
+
+/**
+ * @returns {Bytes} Mega Bytes used
+ */
+async function getTotalDataUsage(){
+  let stats = await pc.getStats();
+  let bytes = 0;
+  for (let [id, stat] of stats) {
+    if (stat.type == "candidate-pair") {
+      if (typeof stat.bytesSent == "number" && !Number.isNaN(stat.bytesSent)) bytes += stat.bytesSent
+      if (typeof stat.bytesReceiveds == "number" && !Number.isNaN(stat.bytesReceiveds)) bytes += stat.bytesReceiveds
+    }
+  }
+  return bytes;
+}
+
+export async function waitForHost(key){
+  return await RTCSignaler.waitForHost(key);
 }
 
 export function getUserType(){
@@ -634,10 +661,12 @@ export function getKey(){
 
 export async function endSession(){
   console.log("end");
+
+
   if (isPolite()) {
     window.location = "../SessionEnd";
   } else {
-    await RTCSignaler.remove();
+    await RTCSignaler.remove(await getTotalDataUsage());
     window.location = "../"
   }
 }

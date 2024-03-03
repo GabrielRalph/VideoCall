@@ -1,8 +1,9 @@
-import {firebaseConfig} from "./firebase-config.js"
+import {firebaseConfig, storageURL} from "./firebase-config.js"
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
 import {getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
 import {getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
 import { getFunctions, httpsCallable  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js'
+import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js'
 
 let initialised = false;
 let App = null;
@@ -106,6 +107,40 @@ export async function callFunction(name, data) {
     res = await func(data);
   }
   return res;
+}
+
+// Upload file to firebase storage bucket
+export async function uploadFileToCloud(file, path, statusCallback) {
+  let Storage = getStorage(App, storageURL);
+
+  // path = `${path}`
+  console.log("uploading file of size", (file.size / 1e6) + "MB");
+
+  if (!(file instanceof File) || typeof path !== 'string') {
+      console.log('invalid file');
+      return null;
+  }
+
+  if (!(statusCallback instanceof Function))
+      statusCallback = () => { }
+
+  let sr = sref(Storage, path);
+
+  let uploadTask = uploadBytesResumable(sr, file);
+  console.log(uploadTask);
+  uploadTask.on('next', statusCallback)
+  await uploadTask;
+
+  let url = await getDownloadURL(sr);
+  return url;
+}
+
+export async function getFile(path) {
+  let Storage = getStorage(App, storageURL);
+  let sr = sref(Storage, path);
+  let data = await getMetadata(sr)
+  console.log(data);
+  return await getBlob(sr);
 }
 
 

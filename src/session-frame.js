@@ -65,7 +65,12 @@ class ToolBar extends SvgPlus {
     let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
     i4.onclick = () => WebRTC.endSession();
 
-    this.file = this.createChild("div", {class: "icon tbs", type: "file", content: Icons["file"]});
+    this.file = this.createChild("div", {class: "tbs icon", type: "file"});
+    let fl = this.file.createChild(FileLoadIcon);
+    fl.shown = true;
+    fl.progress = 1;
+    fl.props = {class: "icon"};
+    this.fileProgress = fl;
 
     let pdf = this.createChild("div", {class: "group", type: "pdf", styles: {display: "none"}});
     this.left = pdf.createChild("div", {class: "icon tbs", content: "▶", style: {transform:'scale(-1, 1)'} });
@@ -109,15 +114,7 @@ class ToolBar extends SvgPlus {
     }
   }
 
-  onconnect(){
-    let vcw = document.querySelector("video-call-widget");
-    console.log(vcw);
-    vcw.addEventListener("move", (e) => {
-      let yrel = -1 * vcw.relativePosition.y;
-      if (yrel > 0.5) this.top = true;
-      else this.top = false;
-    })
-  }
+
 
   /**
    * @param {{ local: { audio_muted: any; video: any; }; type: any; } | null} state
@@ -203,6 +200,7 @@ calibrating: not-calibrating feedback, calibration, results
 
 class SessionFrame extends SvgPlus {
   async onconnect(){
+
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
@@ -215,10 +213,13 @@ class SessionFrame extends SvgPlus {
     this.video_call_screen = this.web_rtc.createChild(VideoCallScreen);
     this.tool_bar = this.web_rtc.createChild(ToolBar);
     this.video_widget.addEventListener("move", () => {
-      let ypos = getCursorPosition().y / window.innerHeight;
+      let ypos = -1 * this.video_widget.relativePosition.y;
       this.tool_bar.top = ypos > 0.5;
+      console.log(ypos);
+      
     });
-    this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
+    this.fileProgress = this.tool_bar.fileProgress;
+    // this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
     // this.fileProgress.show();
 
 
@@ -409,7 +410,7 @@ class SessionFrame extends SvgPlus {
       if ("file" in state) {
         this.fileProgress.progress = state.file.progress;
         if (state.file.progress == 1) {
-          setTimeout(() => this.fileProgress.hide(), 1000);
+          // setTimeout(() => this.fileProgress.hide(), 1000);
         } else {
           this.fileProgress.show();
         }
@@ -430,6 +431,7 @@ class SessionFrame extends SvgPlus {
     if (state != this._c_state) {
       console.log(state, this._c_state);
       this._c_state = state;
+      console.log(state);
       switch(state) {
         case 0:
           this.widgetShown = this.hasContent;
@@ -509,6 +511,13 @@ class SessionFrame extends SvgPlus {
   }
 
 
+  async waitForHost(key, forceParticipant) {
+    // Show waiting room
+    this.error_frame.innerHTML = "Please wait for the host to start the session.";
+    await parallel(this.loader.hide(), this.error_frame.show())
+    await WebRTC.waitForHost(key);
+    this.joinSession(key, forceParticipant);
+  }
 
 
   async joining(){
@@ -526,9 +535,12 @@ class SessionFrame extends SvgPlus {
         this.video_call_screen.show();
         this.loader.setText("")
       } catch (e) {
-        console.log(e);
-        this.error_frame.innerHTML = e;
-        await parallel(this.loader.hide(), this.error_frame.show())
+        if (e.waitForHost === true) {
+          this.waitForHost(key, forceParticipant);
+        } else {
+          this.error_frame.innerHTML = e;
+          await parallel(this.loader.hide(), this.error_frame.show())
+        }
       }
     } else {
       this.error_frame.innerHTML = "Please enable webcam access to continue.<br/>"
