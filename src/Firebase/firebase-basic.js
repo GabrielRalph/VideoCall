@@ -127,7 +127,6 @@ export async function uploadFileToCloud(file, path, statusCallback) {
   let sr = sref(Storage, path);
 
   let uploadTask = uploadBytesResumable(sr, file);
-  console.log(uploadTask);
   uploadTask.on('next', statusCallback)
   await uploadTask;
 
