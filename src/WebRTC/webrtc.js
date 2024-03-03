@@ -1,5 +1,5 @@
 import {Firebase, RTCSignaler} from "../Firebase/firebase.js"
-import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
+// import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
 
 let initialised = false;
 let localStream = null;
@@ -220,10 +220,10 @@ function updateHandler(type, data){
       sessionState = "open"
       remoteContentStatus.recv = true;
       state_update = {status: "open", remote: {stream: remoteStream}};
-      if (sendBuffer instanceof ChunkSendBuffer) {
-        sendBuffer.reset(getMaxMessageSize());
-        sendChunk(0);
-      }
+      // if (sendBuffer instanceof ChunkSendBuffer) {
+      //   sendBuffer.reset(getMaxMessageSize());
+      //   sendChunk(0);
+      // }
       rtc_log_state();
       rtc_l1_log("open");
     }
@@ -253,11 +253,13 @@ function updateHandler(type, data){
 }
 
 // WebRTC negotiation event handlers
-async function onSignalerReceive({ data: { description, candidate, session_ended } }) {
+async function onSignalerReceive({ data: { description, candidate, session_ended, contentInfo } }) {
   try {
     if (session_ended) {
       updateHandler("state", "ended")
       endSession();
+    }else if (contentInfo){
+      updateDataListeners({contentInfo});
     }else if (description) {
       rtc_base_log("description <-- " + description.type);
       rtc_base_log(pc.signalingState);
@@ -367,12 +369,12 @@ function sendMessage(message) {
 function handleReceiveMessage(event) {
   // console.log(event.data, event.data[0]);
   switch (event.data[0]) {
-    case "F":
-      loadFileChunk(event.data);
-      break;
-    case "R":
-      onFileChunkResponse(event.data);
-      break;
+    // case "F":
+    //   loadFileChunk(event.data);
+    //   break;
+    // case "R":
+    //   onFileChunkResponse(event.data);
+    //   break;
     default:
       updateHandler("data", JSON.parse(event.data));
       break;
@@ -416,57 +418,57 @@ function startMessageChannel(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FILE SEND METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-let receiveBuffer = null;
-let sendBuffer = null;
+// let receiveBuffer = null;
+// let sendBuffer = null;
 
-function getMaxMessageSize(){
-  let size = 0;
-  if (pc != null) {
-    size = pc.sctp.maxMessageSize;
-  }
-  return size;
-}
+// function getMaxMessageSize(){
+//   let size = 0;
+//   if (pc != null) {
+//     size = pc.sctp.maxMessageSize;
+//   }
+//   return size;
+// }
 
-/* Load file chunk, called when a file chunk is received accros the data channel. Sends the 
-   file chunk response. */
-function loadFileChunk(data) {
-  if (receiveBuffer == null) {
-    receiveBuffer = new ChunkReceiveBuffer();
-  }
+// /* Load file chunk, called when a file chunk is received accros the data channel. Sends the 
+//    file chunk response. */
+// function loadFileChunk(data) {
+//   if (receiveBuffer == null) {
+//     receiveBuffer = new ChunkReceiveBuffer();
+//   }
 
-  try {
-    let response = receiveBuffer.add(data);
-    sendMessage(response);
-  } catch (e) {
-    // Received a new file, discard old file and store the new chunk
-    receiveBuffer = new ChunkReceiveBuffer();
-    let response = receiveBuffer.add(data);
-    sendMessage(response);
-  }
-  updateStateListeners({file: {progress: receiveBuffer.progress}});
-  if (receiveBuffer.complete) {
-    let message = {data: {file: receiveBuffer.result}};
-    receiveBuffer = null;
-    updateHandler("data", message);
-  } 
-}
+//   try {
+//     let response = receiveBuffer.add(data);
+//     sendMessage(response);
+//   } catch (e) {
+//     // Received a new file, discard old file and store the new chunk
+//     receiveBuffer = new ChunkReceiveBuffer();
+//     let response = receiveBuffer.add(data);
+//     sendMessage(response);
+//   }
+//   updateStateListeners({file: {progress: receiveBuffer.progress}});
+//   if (receiveBuffer.complete) {
+//     let message = {data: {file: receiveBuffer.result}};
+//     receiveBuffer = null;
+//     updateHandler("data", message);
+//   } 
+// }
 
-/* Send chunk, sends a file chunk accros the data channel. Sets a timeout such that if a response is not 
-   received in 20s then the send process is reset. */
-function sendChunk(i = null){
-  let message = sendBuffer.get(i);
-  sendMessage(message)
-}
+// /* Send chunk, sends a file chunk accros the data channel. Sets a timeout such that if a response is not 
+//    received in 20s then the send process is reset. */
+// function sendChunk(i = null){
+//   let message = sendBuffer.get(i);
+//   sendMessage(message)
+// }
 
-/* On file chunk response, called when a file chunk response is received accros the data channel
-  i.e. the chunk was received successfuly. Send the next chunk if required. */  
-function onFileChunkResponse(response) {
-  sendBuffer.response(response);
-  updateStateListeners({file: {progress: sendBuffer.progress}})
-  if (!sendBuffer.complete) {
-    sendChunk();
-  }
-}
+// /* On file chunk response, called when a file chunk response is received accros the data channel
+//   i.e. the chunk was received successfuly. Send the next chunk if required. */  
+// function onFileChunkResponse(response) {
+//   sendBuffer.response(response);
+//   updateStateListeners({file: {progress: sendBuffer.progress}})
+//   if (!sendBuffer.complete) {
+//     sendChunk();
+//   }
+// }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -575,19 +577,19 @@ export function addDataListener(callback) {
 
 
 
-export function sendFile(buffer, filename) {
-  sendBuffer = new ChunkSendBuffer(buffer, filename, getMaxMessageSize());
-  if (sessionState == "open") {
-    sendBuffer.reset(getMaxMessageSize());
-    sendChunk(0);
-  }
-}
+// export function sendFile(buffer, filename) {
+//   sendBuffer = new ChunkSendBuffer(buffer, filename, getMaxMessageSize());
+//   if (sessionState == "open") {
+//     sendBuffer.reset(getMaxMessageSize());
+//     sendChunk(0);
+//   }
+// }
 
-/* Send data across data channel */
-export function sendData(data) {
-  let message = {data}
-  sendMessage(message);
-}
+// /* Send data across data channel */
+// export function sendData(data) {
+//   let message = {data}
+//   sendMessage(message);
+// }
 
 /* start call */
 export async function start(key, stream, forceParticipant){
@@ -600,14 +602,14 @@ export async function start(key, stream, forceParticipant){
   pc.setConfiguration({iceServers});
 
   // Print Stats
-  setInterval(async () => {
-    let stats = await pc.getStats();
-    for (let [id, stat] of stats) {
-      if (stat.type == "candidate-pair") {
-        console.log(`sent: ${stat.bytesSent/1024}kB\nrecv: ${stat.bytesReceived/1024}kB`);
-      }
-    }
-  }, 1000)
+  // setInterval(async () => {
+  //   let stats = await pc.getStats();
+  //   for (let [id, stat] of stats) {
+  //     if (stat.type == "candidate-pair") {
+  //       console.log(`sent: ${stat.bytesSent/1024}kB\nrecv: ${stat.bytesReceived/1024}kB`);
+  //     }
+  //   }
+  // }, 1000)
 
   remoteStream = null;
   localStream = stream;
@@ -669,4 +671,12 @@ export async function endSession(){
     await RTCSignaler.remove(await getTotalDataUsage());
     window.location = "../"
   }
+}
+
+export async function uploadSessionContent(file, callback){
+  return await RTCSignaler.uploadSessionContent(file, callback)
+}
+
+export async function changeSessionContentPage(page){
+  return await RTCSignaler.changeSessionContentPage(page)
 }

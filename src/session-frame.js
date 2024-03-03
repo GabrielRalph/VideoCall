@@ -197,6 +197,24 @@ calibrating: not-calibrating feedback, calibration, results
                 0               1         2           3 
 */
 
+async function openContent(){
+  let input = new SvgPlus("input");
+  input.props = {type: "file", accept: "image/*, .pdf"};
+  return new Promise((resolve) => {
+    input.click();
+    input.onchange = () => {
+      if (input.files.length > 0) {
+        let file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          file.url = evt.target.result;
+          resolve(file);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  });
+}
 
 class SessionFrame extends SvgPlus {
   async onconnect(){
@@ -278,7 +296,7 @@ class SessionFrame extends SvgPlus {
 
 
   async toWidget(bool = true){
-    console.log(bool);
+  
     if (this.widgetShown != bool) {
       this._widgetShown = bool;
       if (bool) {
@@ -289,7 +307,9 @@ class SessionFrame extends SvgPlus {
     }
   }
   get widgetShown(){return this._widgetShown;}
-  set widgetShown(bool){return this.toWidget(bool);}
+  set widgetShown(bool){
+    this.toWidget(bool);
+  }
 
   onEyePosition(input) {
     let {result} = input;
@@ -313,22 +333,26 @@ class SessionFrame extends SvgPlus {
     } 
   }
 
+
   async openFile(){
-    let file = await this.pdf.openFile();
-    WebRTC.sendFile(file.buffer, file.type);
-    await this.setFile(file);
+    let contentFile = await openContent();
+    WebRTC.uploadSessionContent(contentFile, (p) => {
+      this.fileProgress.progress = p;
+    });
+    await this.setFile({
+      url: contentFile.url,
+      page: 1,
+      type: contentFile.type.indexOf("pdf") == -1 ? "image" : "pdf"
+    });
   }
 
 
-  async setFile(file){
-    // console.log("setting file ");
-    await this.pdf.loadFile(file);
+  async setFile(contentInfo){
+    console.log(contentInfo);
+    await this.pdf.updateContentInfo(contentInfo);
     this.tool_bar.updatePDFControls(this.pdf);
-    console.log("widget");
     await this.toWidget(true)
   }
-
-
 
   setPage(direction, inc = true) {
     if (inc) {
@@ -337,7 +361,7 @@ class SessionFrame extends SvgPlus {
       this.pdf.page = direction;
     }
     if (!WebRTC.isPolite()) {
-      WebRTC.sendData({pdf: this.pdf.page})
+      WebRTC.changeSessionContentPage(this.pdf.page)
     }
     this.tool_bar.updatePDFControls(this.pdf);
   }
@@ -358,8 +382,8 @@ class SessionFrame extends SvgPlus {
         }
       } 
 
-      if ("file" in data) {
-        this.setFile(data.file)
+      if ("contentInfo" in data) {
+        this.setFile(data.contentInfo)
       }
 
       if ("pdf" in data) {
@@ -399,7 +423,7 @@ class SessionFrame extends SvgPlus {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
         if (state.status != "open") {
-          this.toWidget(false);
+          this.toWidget(this.hasContent);
         }
       }
       if ("remote" in state && this.type == "host") {
@@ -407,14 +431,14 @@ class SessionFrame extends SvgPlus {
           this.feedback_window.frame.videoStream = state.remote.stream;
         }
       }
-      if ("file" in state) {
-        this.fileProgress.progress = state.file.progress;
-        if (state.file.progress == 1) {
-          // setTimeout(() => this.fileProgress.hide(), 1000);
-        } else {
-          this.fileProgress.show();
-        }
-      }
+      // if ("file" in state) {
+      //   this.fileProgress.progress = state.file.progress;
+      //   if (state.file.progress == 1) {
+      //     // setTimeout(() => this.fileProgress.hide(), 1000);
+      //   } else {
+      //     this.fileProgress.show();
+      //   }
+      // }
     }
   }
 

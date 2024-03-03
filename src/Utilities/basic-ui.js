@@ -1,6 +1,42 @@
 import {SvgPlus, Vector} from "../SvgPlus/4.js"
 import {dotGrid, transition, isPageHidden} from "../Utilities/usefull-funcs.js"
 
+class WaveTransition{
+  constructor(update, duration, dir){
+    let stop = false;
+    let executor = (resolve) => {
+      let t0;
+      let end = false;
+
+      let next = (t) => {
+        let dt = t - t0;
+
+        if (dt > duration) {
+          end = true;
+          dt = duration;
+        }
+
+        let theta = Math.PI * ( dt / duration  +  (dir ? 1 : 0) );
+        let progress =  ( Math.cos(theta) + 1 ) / 2;
+
+        if (update instanceof Function) update(progress);
+
+        if (!end && !stop){
+          window.requestAnimationFrame(next);
+        }else{
+          resolve(progress);
+        }
+      };
+      window.requestAnimationFrame((t) => {
+        t0 = t;
+        window.requestAnimationFrame(next);
+      });
+    }
+    this.prom = new Promise(executor)
+    this.stop = () => {stop = true;}
+  } 
+  
+}
 
 export class HideShow extends SvgPlus {
   constructor(el = "div") {
@@ -33,19 +69,23 @@ export class HideShow extends SvgPlus {
 
   async show(duration = 400, hide = false) {
     // console.log(hide, this.hidden);
-    if (this._shown == !hide || this._transitioning) return;
+    if (this._shown == !hide) return;
+    if (this._transitioning instanceof Promise) {
+      this._transitioning.stop();
+      await this._transitioning;
+    }
     this._shown = !hide;
-    this._transitioning = true;
     if (!hide) this.styles = {display: null, opacity: 0}
 
     if (!isPageHidden()){
-      await this.waveTransition((t) => {
+      this._transitioning = new WaveTransition((t) => {
         this.opacity = t;
       }, duration, !hide);
+      await this._transitioning.prom;
     }
+    this._transitioning = null;
 
     this.shown = !hide;
-    this._transitioning = false;
   }
 	async hide(duration = 400) {
 		await this.show(duration, true);

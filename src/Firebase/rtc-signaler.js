@@ -1,4 +1,4 @@
-import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue, callFunction} from "./firebase-basic.js"
+import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "sessions";
 
@@ -76,25 +76,26 @@ function addListeners(key, userType){
     }
   });
 
-  // let contentRef = getSessionRef(key, "content");
-  // if (userType == "host") {
-  //   // Get content information once at the start for host
-  //   let gc = async () => {
-  //     let contentInfo = (await get(contentRef)).val();
-  //     if (contentData != null) {
-  //       messageHandler({data: {contentInfo}});
-  //     }
-  //   }
-  //   gc();
-  // }else {
-  //   // Watch content info for the participant
-  //   ContentListener = onValue(contentRef, (sc) => {
-  //     let contentInfo = sc.val();
-  //     if (sc.val() == null) {
-  //       messageHandler({data: {contentInfo}})
-  //     }
-  //   })
-  // }
+  let contentRef = getSessionRef(key, "content");
+  if (userType == "host") {
+    // Get content information once at the start for host
+    let gc = async () => {
+      let contentInfo = (await get(contentRef)).val();
+      if (contentInfo != null) {
+        messageHandler({data: {contentInfo}});
+      }
+    }
+    gc();
+  } else {
+    // Watch content info for the participant
+    ContentListener = onValue(contentRef, (sc) => {
+      let contentInfo = sc.val();
+      if (contentInfo != null) {
+        console.log(contentInfo);
+        messageHandler({data: {contentInfo}})
+      }
+    })
+  }
 
   let descriptionRef = getSessionRef(key, `${listenTo}/description`);
   DescriptionListener = onChildAdded(descriptionRef, (sc) => {
@@ -195,8 +196,29 @@ export async function send({description, candidate}) {
   }
 }
 
-export async function uploadSessionContent(file) {
+export async function uploadSessionContent(file, callback) {
+  if (file instanceof File) {
+    // upload content
+    let url = await uploadFileToCloud(file, `/session-content/${getKey()}`, (uts) => {
+      if (callback instanceof Function)
+        callback(uts.bytesTransferred / uts.totalBytes)
+    })
+  
+    // set content info
+    let contentRef = getSessionRef(getKey(), "content");
+    let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
+    let page = 1;
+    set(contentRef, {
+      url, 
+      type,
+      page
+    })
+  }
+}
 
+export function changeSessionContentPage(page) {
+  let contentRef = getSessionRef(getKey(), "content/page");
+  set(contentRef, page);
 }
 
 // returns wheather the user is a participant in the current session

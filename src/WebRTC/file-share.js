@@ -201,3 +201,26 @@ export class ChunkReceiveBuffer{
         return result;
     }
 }
+
+export async function openFile(){
+    let input = new SvgPlus("input");
+    input.props = {type: "file", accept: "image/*, .pdf"};
+    return new Promise((resolve) => {
+      input.click();
+      input.onchange = () => {
+        if (input.files.length > 0) {
+          let file = input.files[0];
+          let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
+          let bfunc = type == "pdf" ? "readAsArrayBuffer" : "readAsDataURL";
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            resolve({
+              type: type,
+              buffer: evt.target.result
+            });
+          };
+          reader[bfunc](input.files[0]);
+        }
+      }
+    });
+  }

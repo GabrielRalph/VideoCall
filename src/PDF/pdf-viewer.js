@@ -42,28 +42,7 @@ async function renderPDF(canvas, pdfDoc, pageNum, maxDimension){
   // console.log("page rendered");
 }
 
-async function openFile(){
-  let input = new SvgPlus("input");
-  input.props = {type: "file", accept: "image/*, .pdf"};
-  return new Promise((resolve) => {
-    input.click();
-    input.onchange = () => {
-      if (input.files.length > 0) {
-        let file = input.files[0];
-        let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
-        let bfunc = type == "pdf" ? "readAsArrayBuffer" : "readAsDataURL";
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          resolve({
-            type: type,
-            buffer: evt.target.result
-          });
-        };
-        reader[bfunc](input.files[0]);
-      }
-    }
-  });
-}
+
 
 // async function openImage(){
 //   let input = new SvgPlus("input");
@@ -103,18 +82,12 @@ class PdfViewer extends SvgPlus {
     let icons = this.createChild("div", {class: "pdf-controls"});
     this.icons = icons;
     this.middle_icon = icons.createChild("div", {class: "bottom-middle"});
-
-    // this.onclick = async () => {
-    //   let buffer = await loadPDFFile();
-    //   console.log(buffer);
-    //   this.loadPDF(buffer);
-    // }
   }
 
   set page(value) {
     if (value < 1) value = 1;
-    let {totalPages} = this;
-    if (value > totalPages) value = totalPages;
+    let {totalPages, pdfDoc} = this;
+    if (value > totalPages && pdfDoc) value = totalPages;
     this._pageNumber = value;
     this.renderPage();
   }
@@ -140,23 +113,31 @@ class PdfViewer extends SvgPlus {
     return this._displayType;
   }
 
-  async openFile(){
-    return await openFile();
-  }
+  // async openFile(){
+  //   return await openFile();
+  // }
 
+  /**
+   * @param {Object} contentInfo 
+   * @param {String} contentInfo.url
+   * @param {String} contentInfo.page
+   * @param {String} contentInfo.type
+   */
+  async updateContentInfo(contentInfo) {
+    let {url, page, type} = contentInfo;
 
-  async loadFile(file) {
-    this.pdfDoc = null;
-    this.displayType = null;
-
-    if (file) {
-      let type = file.name ? file.name : file.type;
+    if (url != this.url) {
+      this.displayType = type;
       if (type == "pdf") {
-        await this.loadPDF(file.buffer);
+        this.page = page;
+        console.log(this.page, page);
+        await this.loadPDF(url);
       } else {
-        this.image.props = {src: file.buffer};
-        this.displayType = "image";
+        this.image.props = {src: url};
+        this._url = url;
       }
+    } else if (page != this.page) {
+        this.page = page;
     }
   }
 
@@ -195,14 +176,14 @@ class PdfViewer extends SvgPlus {
     return this._url;
   }
 
-  set url(url) {
-    this.loadPDF(url);
-  }
+  // set url(url) {
+  //   this.loadPDF(url);
+  // }
 
-  set src(value) {
-    console.log("src");
-    this.url = value;
-  }
+  // set src(value) {
+  //   console.log("src");
+  //   this.url = value;
+  // }
 
   async waitForLoad(){
     console.log('waiting for load', this._wait_for_load);
@@ -212,6 +193,7 @@ class PdfViewer extends SvgPlus {
     // await this._wait_for_load;
     console.log('loaded');
   }
+
   async renderPage(){
     let {canvas, pdfDoc, pageNum} = this;
     if (pdfDoc) {
@@ -225,6 +207,7 @@ class PdfViewer extends SvgPlus {
       };
     }
   }
+
   get render_prom(){
     return this._render_prom;
   }
