@@ -511,6 +511,7 @@ export function makeKeyLink(key, option = null) {
   */
 export function muteTrack(trackType = "auido", source = "local", bool = null) {
   let res = null;
+  console.log(trackType, bool);
   if (localStream && source == "local") {
     let tracks = localStream[`get${trackType[0].toUpperCase() + trackType.slice(1)}Tracks`]();
     let t = tracks[0];
@@ -597,10 +598,10 @@ export async function start(key, stream, forceParticipant){
     await load();
   }
   ended = false;
-  let iceServers = await RTCSignaler.join(key, onSignalerReceive, forceParticipant);
+  let {iceServers, initialState} = await RTCSignaler.join(key, onSignalerReceive, forceParticipant);
   console.log(iceServers);
+  console.log(initialState);
   pc.setConfiguration({iceServers});
-
   // Print Stats
   // setInterval(async () => {
   //   let stats = await pc.getStats();
@@ -618,13 +619,18 @@ export async function start(key, stream, forceParticipant){
     pc.addTrack(track, stream);
   }
 
+
+  let vt = localStream.getVideoTracks()[0];
+  let at = localStream.getAudioTracks()[0];
+  vt.enabled = !initialState.video
+  at.enabled = !initialState.audio
   updateStateListeners({
     status: "started",
     type: getUserType(),
     local: {
       stream: localStream,
-      audio_muted: !localStream.getAudioTracks()[0].enabled,
-      video_muted: !localStream.getVideoTracks()[0].enabled,
+      audio_muted: !at.enabled,
+      video_muted: !vt.enabled,
     }
   })
   updateHandler("status")

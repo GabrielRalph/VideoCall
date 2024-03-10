@@ -157,20 +157,28 @@ export async function join(key, onmessage, forceParticipant = false) {
       throw error;
     } else {
       let {data} = await callFunction("startSession", {sid: key});
-      console.log(data);
       if (data.error != null || data.iceServers == null) {
-        throw "You cannot host a meeting currently, please check your usage."
+        let names = "";
+        if (data.error.startsWith("Usage exceeded")) names = data.error.replace("Usage exceeded ", "")
+        throw `You cannot host a meeting currently, please check your ${names} usage.`
       } 
       iceServers = data.iceServers;
     }
   }
-  
+
   if (onmessage instanceof Function) messageHandler = onmessage;
 
   let userType = asParticipant ? "participant" : "host";
+
+  let initialState = {};
+  for (let key of ["Video", "Audio"]) {
+    let value = (await get(ref(`users/${hostUID}/info/${userType + key}`))).val();
+    initialState[key.toLocaleLowerCase()] = value === false;
+  }
+  
   addListeners(key, userType);
 
-  return iceServers;
+  return {iceServers, initialState};
 }
 
 /* Leave the current session */
