@@ -60,6 +60,15 @@ video-call-widget .main-content {
 
 }
 
+/*  */
+popup-info {
+    border-radius: 0.5em;
+    color: #d5d5d5;
+    background: #0009;
+    padding: 1em;
+    text-align: center;
+}
+
 /* ~~~~ Side Bar Style ~~~~ */
 .side-bar {
     color: white;

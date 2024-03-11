@@ -12,6 +12,12 @@ let ContentListener = null;
 let TickIntervalID = null;
 let messageHandler = () => {};
 
+async function sendTick(key){
+  let res = await callFunction("sendTick", {sid: key})
+  if (res.data != null) {
+    messageHandler({data: {usage: res.data}});
+  }
+}
 
 function getSessionRef(sessionID, path) {
   let Database = getDB();
@@ -50,6 +56,7 @@ function removeListeners(){
   if (CandidateListener instanceof Function) CandidateListener();
   if (DescriptionListener instanceof Function) DescriptionListener();
   if (HostUIDListener instanceof Function) HostUIDListener();
+  if (ContentListener instanceof Function) ContentListener();
   if (TickIntervalID != null) clearInterval(TickIntervalID);
 }
 
@@ -62,9 +69,9 @@ function addListeners(key, userType){
   // Listen to the oposite user type
   let listenTo = userType == "host" ? "participant" : "host"
 
-  callFunction("sendTick", {sid: key})
-  TickIntervalID = setInterval(() => {
-    callFunction("sendTick", {sid: key})
+  sendTick(key);
+  TickIntervalID = setInterval(async () => {
+    sendTick(key);
   }, TICK_TIMEOUT_MINUTES * 60*1000)
 
   let hostUIDRef = getSessionRef(key, "hostUID");
@@ -146,8 +153,8 @@ export async function join(key, onmessage, forceParticipant = false) {
 
   let asParticipant = !((hostUID == getUID()) && (!forceParticipant));
 
-  let time = (await get(getSessionRef(key, "time"))).val();
-  console.log(new Date(time) + "");
+  // let time = (await get(getSessionRef(key, "time"))).val();
+  // console.log(new Date(time) + "");
   
   let iceServers = (await get(getSessionRef(key, "iceServers"))).val();
   if (iceServers == null) {

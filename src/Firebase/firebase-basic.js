@@ -84,7 +84,6 @@ export function getUID(){
   if (User != null && typeof User !== "string") {
     uid = User.uid;
   }
-  console.log(User);
   return uid;
 }
 

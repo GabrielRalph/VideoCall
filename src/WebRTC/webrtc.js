@@ -253,13 +253,15 @@ function updateHandler(type, data){
 }
 
 // WebRTC negotiation event handlers
-async function onSignalerReceive({ data: { description, candidate, session_ended, contentInfo } }) {
+async function onSignalerReceive({ data: { description, candidate, session_ended, contentInfo, usage } }) {
   try {
     if (session_ended) {
       updateHandler("state", "ended")
       endSession();
     }else if (contentInfo || contentInfo === null){
       updateDataListeners({contentInfo});
+    }else if (usage || usage === null){
+      updateDataListeners({usage});
     }else if (description) {
       rtc_base_log("description <-- " + description.type);
       rtc_base_log(pc.signalingState);
@@ -599,8 +601,6 @@ export async function start(key, stream, forceParticipant){
   }
   ended = false;
   let {iceServers, initialState} = await RTCSignaler.join(key, onSignalerReceive, forceParticipant);
-  console.log(iceServers);
-  console.log(initialState);
   pc.setConfiguration({iceServers});
   // Print Stats
   // setInterval(async () => {

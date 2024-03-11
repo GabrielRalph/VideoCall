@@ -129,7 +129,6 @@ class ToolBar extends SvgPlus {
   set state(state) {
     if (state != null) {
       if ("local" in state) {
-        console.log(state);
         if ("audio_muted" in state.local) this.imute.innerHTML = state.local.audio_muted ? Icons.mute : Icons.unmute
         if ("video_muted" in state.local) this.ivideo.innerHTML = state.local.video_muted ? Icons.novideo : Icons.video
       }
@@ -243,6 +242,10 @@ class SessionFrame extends SvgPlus {
       
     });
     this.fileProgress = this.tool_bar.fileProgress;
+    this.popup_info = new FloatingBox("popup-info");
+    this.popup_info.align = new Vector(0.5, 0.2);
+    this.web_rtc.appendChild(this.popup_info);
+
     // this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
     // this.fileProgress.show();
 
@@ -397,12 +400,26 @@ class SessionFrame extends SvgPlus {
         }
       } 
 
+      if ("usage" in data) {
+        let minutes = data.usage.minutes.remaining;
+        if (minutes > 0 && minutes < 5) {
+          this.popup_info.innerHTML = "You have less than 5 minutes of usage remaining"
+          this.popup_info.waveTransition((t) =>{
+            this.popup_info.align = new Vector(0.5, t*0.2)
+          }, 700, true);
+          this.popup_info.show(700);
+          setTimeout(() => {
+            this.popup_info.hide(700)
+            this.popup_info.waveTransition((t) => {this.popup_info.align = new Vector(0.5, t*0.2)}, 700, false);
+          }, 5000)
+        }
+      }
+
       if ("contentInfo" in data) {
         this.setFile(data.contentInfo)
       }
 
       if ("pdf" in data) {
-        console.log(data.pdf);
         this.setPage(data.pdf, false)
       }
 
