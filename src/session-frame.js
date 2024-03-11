@@ -175,8 +175,7 @@ class FeedbackWindow extends FloatingBox {
     super(el);
     this.frame = this.createChild(FeedbackFrame);
     this.frame.shown = true;
-    this.message = this.createChild("div", {class: "message", content: "Make sure you're eyes are visible and highlighted with green boxes<br/>"});
-    // this.message.createChild("small", {content: "The two images of you're eyes will be used to track your eyes, make sure they are clear."})
+    this.message = this.createChild("div", {class: "message", content: "Make sure your eyes are visible and highlighted with green boxes<br/>"});
     let buttons = this.createChild("div", {class: "buttons"});
     this.cancel = buttons.createChild("div", {class: "btn", content: "cancel"})
     this.continue = buttons.createChild("div", {class: "btn", content: "continue"})
@@ -188,7 +187,7 @@ class FeedbackWindow extends FloatingBox {
  
 
   renderFeatures(features, canvas) {
-    this.buttons.styles = {
+    this.continue.styles = {
       opacity: features.warning ? 0.5 : 1,
       "pointer-events": features.warning ? "none" : "all"
     }

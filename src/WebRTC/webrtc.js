@@ -587,10 +587,10 @@ export function addDataListener(callback) {
 // }
 
 // /* Send data across data channel */
-// export function sendData(data) {
-//   let message = {data}
-//   sendMessage(message);
-// }
+export function sendData(data) {
+  let message = {data}
+  sendMessage(message);
+}
 
 /* start call */
 export async function start(key, stream, forceParticipant){
