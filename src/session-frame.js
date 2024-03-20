@@ -54,6 +54,8 @@ class ToolBar extends SvgPlus {
       this.keyanim = false;
     }
 
+    this.settings = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["settings"]});
+
     this.imute = this.createChild("div", {class: "icon tbs", type: "audio", content: Icons["mute"]});
     this.imute.onclick = () => WebRTC.muteTrack("audio", "local");
 
@@ -221,6 +223,75 @@ async function openContent(){
   });
 }
 
+
+class SettingsPanel extends FloatingBox {
+  constructor(){
+    super("settings-panel");
+    let title = this.createChild("div", {class: "title"});
+    title.createChild("div", {content: "Settings"});
+    let close = title.createChild("div", {class: "icon", content: Icons["close"]});
+    close.onclick = () => this.hide();
+    this.devicesList = this.createChild("div", {class: "device"});
+    this.align = new Vector(0, 0.5)
+
+  }
+
+  async updateDevices(){
+    let devices = await WebRTC.getTrackSelection();
+    let types = {
+      "audioinput": [],
+      "videoinput": [],
+      "audiooutput": [],
+    }
+    let niceNames = {
+      "audioinput": "Select Microphone",
+      "videoinput": "Select Camera",
+      "audiooutput": "Select Speaker"
+    }
+    devices.forEach((a) => {if (a.kind in types) types[a.kind].push(a)})
+    this.devicesList.innerHTML = "";
+    this.devicesList.createChild("div", {content: "Device Inputs"})
+    for (let type in types) {
+      let typeList = this.devicesList.createChild("div");
+      typeList.createChild("div", {content: niceNames[type]});
+      for (let mdi of types[type]) {
+        let icon = typeList.createChild("div", {class: "track-icon"});
+        icon.createChild("span", {class: "icon", content: Icons["tick"]});
+        icon.createChild("span", {content: mdi.label});
+        icon.toggleAttribute("selected",mdi.selected === true)
+
+        icon.onclick = async () => {
+          if (type == "audiooutput") {
+            await WebRTC.selectAudioOutput(mdi.deviceId);
+            this.updateDevices();
+
+          } else {
+            await WebRTC.replaceTrack(type.replace("input", ""), mdi.deviceId);
+            this.updateDevices();
+          }
+        }
+      }
+    }
+  }
+
+  // async hide(){
+  //   console.log("hide");
+  //   super.hide(700);
+  //   await this.waveTransition((t) =>{
+  //     this.align = new Vector(-0.3 * t, 0.5)
+  //   }, 700, true);
+  // }
+
+  async show(duration = 700, hide = false){
+    
+    await this.updateDevices();
+    super.show(duration, hide);
+    await this.waveTransition((t) =>{
+      this.align = new Vector(-0.4 * t, 0.5)
+    }, duration, hide);
+  }
+}
+
 class SessionFrame extends SvgPlus {
   async onconnect(){
 
@@ -245,6 +316,10 @@ class SessionFrame extends SvgPlus {
     this.popup_info = new FloatingBox("popup-info");
     this.popup_info.align = new Vector(0.5, 0.2);
     this.web_rtc.appendChild(this.popup_info);
+
+  
+    this.settings_panel = this.web_rtc.createChild(SettingsPanel)
+
 
     // this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
     // this.fileProgress.show();
@@ -292,6 +367,12 @@ class SessionFrame extends SvgPlus {
     this.tool_bar.right.onclick = () => this.setPage(1);
     this.tool_bar.deletePdf.onclick = () => this.removeFile();
     this.tool_bar.deleteImage.onclick = () => this.removeFile();
+    this.tool_bar.settings.onclick = () => {
+      this.toggleSettings();
+    }
+    // this.tool_bar.settings.addEventListener("contextmenu", (e) => {
+    // })
+
 
 
     let key = getQueryKey();
@@ -302,6 +383,17 @@ class SessionFrame extends SvgPlus {
     } else {
       this.error_frame.innerHTML = "This is not a valid session link."
       await parallel(this.loader.hide(), this.error_frame.show());
+    }
+  }
+
+
+
+  async toggleSettings(){
+  
+    if (this.settings_panel.shown) {
+      this.settings_panel.hide()
+    } else {
+      this.settings_panel.show();
     }
   }
 

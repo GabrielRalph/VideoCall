@@ -2,6 +2,9 @@ import {Firebase, RTCSignaler} from "../Firebase/firebase.js"
 // import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
 
 let initialised = false;
+/**
+ * @type {MediaStream}
+ */
 let localStream = null;
 let remoteStream = null;
 let sendChannel;
@@ -12,6 +15,7 @@ let onUpdateHandler = () => {};
  * @type {RTCPeerConnection}
  */
 let pc = null;
+
 let remoteContentStatus = {
   video: null,
   audio: null,
@@ -685,4 +689,66 @@ export async function uploadSessionContent(file, callback){
 
 export async function changeSessionContentPage(page){
   return await RTCSignaler.changeSessionContentPage(page)
+}
+
+let selectedOutput = null;
+/**
+ * @return {Promise<MediaDeviceInfo[]>}
+ */
+export async function getTrackSelection() {
+  let devices = [...await navigator.mediaDevices.enumerateDevices()];
+  let selected = {}
+  localStream.getTracks().forEach(t => {selected[t.getSettings().deviceId] = true});
+  devices.forEach(d => {
+    if (d.kind == "audiooutput" && selectedOutput !== null) {
+      if (selectedOutput == d.deviceId) {
+        d.selected = true;
+      }
+    } else if (d.deviceId in selected) d.selected = true
+  })
+  console.log(devices);
+  return devices;
+}
+
+let streamConstraints = {
+  video: {
+    deviceId: "defualt",
+    width: { min: 320, ideal: 640, max: 1920 },
+    height: { min: 240, ideal: 480, max: 1080 },
+    facingMode: "user",
+  },
+  audio: {deviceId: "default"},
+}
+
+export async function selectAudioOutput(id) {
+  let videos = document.querySelectorAll("[type = 'remote'] video");
+  for (let video of videos) {
+    try {
+      await video.setSinkId(id);
+    } catch(e) {
+    }
+  }
+  selectedOutput = id;
+}
+
+/**
+ * @param {"audio"|"video"} type
+ * @param {String} id
+ */
+export async function replaceTrack(type, id) {
+    streamConstraints[type].deviceId = id;
+    let stream =  await navigator.mediaDevices.getUserMedia( streamConstraints );
+    let senders = pc.getSenders();
+    let stateUpdate = {stream: stream};
+    for (let key of ["Video", "Audio"]) {
+      let oldTrack = localStream[`get${key}Tracks`]()[0];
+      let track = stream[`get${key}Tracks`]()[0];
+      track.enabled = oldTrack.enabled;
+      stateUpdate[key.toLowerCase() + "_muted"] = !track.enabled;
+      let sender = senders.filter(s => s.track.kind == key.toLowerCase())[0];
+      sender.replaceTrack(track);
+      oldTrack.stop();
+    }
+    updateStateListeners({local: stateUpdate})
+    localStream = stream;
 }

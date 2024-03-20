@@ -1,26 +1,31 @@
 /* Root style parameters */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
 :root {
     --widget-size: 15vh;
     --widget-aspect: 4;
-
+    
     --h: var(--widget-size);
     --wi: calc(var(--widget-size) / var(--widget-aspect));
-
+    
     --br: 8px;
     --sp: 2px;
-   
-
+    
+    
     --ic1: #cac9c4;
     --ic2: white;
     --ic3: #db4a4a;
     --ic4: #ff4646;
-
+    
     --wc: #252222;
+    --wc2: #252222ca;
+    
     --tbc: #3a3737;
-
+    
     --bro: calc(var(--br) + var(--sp));
     --fd1: column;
-
+    
+    font-family: 'Poppins', sans-serif;
     font-size: calc(var(--widget-size) / 6);
 }
 
@@ -67,6 +72,53 @@ popup-info {
     background: #0009;
     padding: 1em;
     text-align: center;
+}
+
+settings-panel {
+    border-radius: 0 0.5em 0.5em 0;
+    color: #d5d5d5;
+    background: var(--wc2);
+    border: var(--sp) solid var(--tbc);
+    backdrop-filter: blur(3px);
+    font-size: 0.8em;
+}
+
+settings-panel * {
+    padding: 0.3em;
+    padding-left: 1em;
+}
+
+settings-panel > .title {
+    border-bottom: var(--sp) solid var(--tbc);
+    padding: 0.3em;
+    font-size: 1.3em;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+settings-panel *:first-child {
+    font-weight: bold;
+    font-size: 1.15em;
+}
+
+settings-panel .track-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    cursor: pointer;
+}
+settings-panel .track-icon[selected] {
+    font-weight: bold;
+}
+settings-panel .track-icon:not([selected]) .icon {
+    opacity: 0;
+}
+
+settings-panel .track-icon * {
+    padding: 0;
+}
+settings-panel .device > *:nth-child(n+3) {
+    border-top: var(--sp) solid var(--tbc);
 }
 
 /* ~~~~ Side Bar Style ~~~~ */

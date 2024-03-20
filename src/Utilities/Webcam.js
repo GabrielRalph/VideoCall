@@ -4,7 +4,10 @@ const camParams2 = {
     height: { min: 240, ideal: 480, max: 1080 },
     facingMode: "user",
   },
-  audio: true,
+  audio: {
+    noiseSuppression: true,
+    echoCancellation: true
+  },
 };
 const camParams1 = {
   video: {
@@ -209,4 +212,9 @@ export function getStream(i) {
   } else {
     return Stream1;
   }
+}
+
+export async function getTrackSelection(type) {
+  let devices = [...await navigator.mediaDevices.enumerateDevices()]
+  return devices;
 }
