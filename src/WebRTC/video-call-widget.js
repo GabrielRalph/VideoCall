@@ -109,6 +109,7 @@ class VideoDisplay extends HideShow {
     }
 
     set type(val) {
+        if (val == "local") this.video.muted = true;
         this.setAttribute("type", val);
     }
     get type(){
