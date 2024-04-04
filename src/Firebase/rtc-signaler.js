@@ -212,6 +212,7 @@ export async function uploadSessionContent(file, callback) {
   if (file instanceof File || file == null) {
     // upload content
     let contentRef = getSessionRef(getKey(), "content");
+    set(contentRef.child("page"), 1);
     if (file == null) {
       set(contentRef, null);
     } else {
@@ -221,14 +222,11 @@ export async function uploadSessionContent(file, callback) {
       })
       // set content info
       let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
-      let page = 1;
       set(contentRef, {
         url, 
         type,
-        page
       })
     }
-  
   }
 }
 

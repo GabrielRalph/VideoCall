@@ -139,7 +139,9 @@ class PdfViewer extends SvgPlus {
           this.image.props = {src: url};
           this._url = url;
         }
-      } else if (page != this.page) {
+      } 
+      
+      if (page != this.page) {
           this.page = page;
       }
     }
