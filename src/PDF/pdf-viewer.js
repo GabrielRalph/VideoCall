@@ -125,7 +125,6 @@ class PdfViewer extends SvgPlus {
    * @param {String} contentInfo.type
    */
   async updateContentInfo(contentInfo) {
-    console.log(contentInfo)
     if (contentInfo == null) {
       this.displayType = null;
       this._url = null;
