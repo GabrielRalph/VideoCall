@@ -222,7 +222,7 @@ export async function uploadSessionContent(file, callback) {
       })
       // set content info
       let type = file.type.indexOf("pdf") == -1 ? "image" : "pdf";
-      set(contentRef, {
+      update(contentRef, {
         url, 
         type,
       })
