@@ -212,7 +212,7 @@ export async function uploadSessionContent(file, callback) {
   if (file instanceof File || file == null) {
     // upload content
     let contentRef = getSessionRef(getKey(), "content");
-    set(contentRef.child("page"), 1);
+    set(child(contentRef, "page"), 1);
     if (file == null) {
       set(contentRef, null);
     } else {
