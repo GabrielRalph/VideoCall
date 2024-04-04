@@ -1,7 +1,7 @@
 import {firebaseConfig, storageURL} from "./firebase-config.js"
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
 import {getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
-import {getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
+import {update, getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
 import { getFunctions, httpsCallable  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js'
 import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js'
 
@@ -142,4 +142,4 @@ export async function getFile(path) {
 }
 
 
-export {child, get, push, set, onChildAdded, onValue}
+export {child, get, push, set, onChildAdded, onValue, update}

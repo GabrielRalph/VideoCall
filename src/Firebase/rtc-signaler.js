@@ -1,4 +1,4 @@
-import {set, get, ref, push, child, getDB, getUID, onChildAdded, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
+import {set, get, ref,update, push, child, getDB, getUID, onChildAdded, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "sessions";
 
