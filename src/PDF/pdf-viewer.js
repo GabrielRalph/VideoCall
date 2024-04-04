@@ -23,7 +23,7 @@ async function delay(time) {
 
 async function renderPDF(canvas, pdfDoc, pageNum, maxDimension){
   // console.log("rendering page", pageNum);
-
+  let t0 = performance.now();
   let page = await pdfDoc.getPage(pageNum);
 
   // Set scale
@@ -35,10 +35,11 @@ async function renderPDF(canvas, pdfDoc, pageNum, maxDimension){
   canvas.width = viewport.width;
 
   await page.render({
-    canvasContext: canvas.getContext("2d"),
+    canvasContext: canvas.getContext("2d", {willReadFrequently: true}),
     viewport: viewport
   }).promise;
 
+  console.log("pdf render took: ", performance.now() - t0);
   // console.log("page rendered");
 }
 
@@ -139,9 +140,7 @@ class PdfViewer extends SvgPlus {
           this.image.props = {src: url};
           this._url = url;
         }
-      } 
-      
-      if (page != this.page) {
+      } else if (page != this.page) {
           this.page = page;
       }
     }
@@ -152,9 +151,12 @@ class PdfViewer extends SvgPlus {
     this.displayType = null;
     let load = async () => {
       try {
+        console.log("loading pdf...");
+        let t0 = performance.now();
         let pdfDoc = await PDF.getDocument(url).promise
         this.pdfDoc = pdfDoc;
         this._url = url;
+        console.log(`pdf took ${performance.now() - t0}ms`)
         if (this.pageNum < 1 || this.pageNum > this.totalPages) this._pageNumber = 1;
         await this.renderPage();
         this.displayType = "pdf";
