@@ -117,6 +117,11 @@ settings-panel .track-icon:not([selected]) .icon {
 settings-panel .track-icon * {
     padding: 0;
 }
+
+settings-panel .device {
+    max-height: 60vh;
+    overflow-y: scroll;
+}
 settings-panel .device > *:nth-child(n+3) {
     border-top: var(--sp) solid var(--tbc);
 }

@@ -210,8 +210,21 @@ export function getStream(i) {
   if (i == 2) {
     return Stream2;
   } else {
-    return Stream1;
+    return Stream;
   }
+}
+
+export async function setStream(stream) {
+  Stream = stream;
+  Video.srcObject = stream;
+  return new Promise((resolve, reject) => {
+    let onload = () => {
+      webcam_on = true;
+      Video.removeEventListener("loadeddata", onload);
+      resolve(true)
+    };
+    Video.addEventListener("loadeddata", onload);
+  });
 }
 
 export async function getTrackSelection(type) {

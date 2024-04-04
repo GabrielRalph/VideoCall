@@ -1,4 +1,5 @@
 import {Firebase, RTCSignaler} from "../Firebase/firebase.js"
+import * as Webcam from "../Utilities/Webcam.js"
 // import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
 
 let initialised = false;
@@ -738,6 +739,12 @@ export async function selectAudioOutput(id) {
 export async function replaceTrack(type, id) {
     streamConstraints[type].deviceId = id;
     let stream =  await navigator.mediaDevices.getUserMedia( streamConstraints );
+    if (type == "video") {
+      let sc = JSON.parse(JSON.stringify(streamConstraints));
+      sc.audio = false;
+      let stream2 = await navigator.mediaDevices.getUserMedia( sc );
+      Webcam.setStream(stream2);
+    }
     let senders = pc.getSenders();
     let stateUpdate = {stream: stream};
     for (let key of ["Video", "Audio"]) {
