@@ -294,7 +294,7 @@ class SettingsPanel extends FloatingBox {
 
 class SessionFrame extends SvgPlus {
   async onconnect(){
-
+    this.lambda = 0.6;
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
@@ -335,7 +335,9 @@ class SessionFrame extends SvgPlus {
       bottom: 0,
       "pointer-events": "none"
     }
-    this.blob = pointers.createPointer("blob", 15);
+    this.grid = pointers.createGrid();
+    this.grid.shown = true;
+    this.blob = pointers.createPointer("blob", 50);
     this.blob.shown = true;
     this.pointers = pointers;
 
@@ -370,6 +372,11 @@ class SessionFrame extends SvgPlus {
     this.tool_bar.settings.onclick = () => {
       this.toggleSettings();
     }
+
+
+    // window.addEventListener("mousemove", (e) => {
+
+    // })
     // this.tool_bar.settings.addEventListener("contextmenu", (e) => {
     // })
 
@@ -417,16 +424,27 @@ class SessionFrame extends SvgPlus {
   onEyePosition(input) {
     let {result} = input;
     let rel = null;
+    let lambda = this.lambda;
 
     if (result) {
-      if (result.x > 1) result.x = 1;
-      if (result.x < 0) result.x = 0;
-      if (result.y > 1) result.y = 1;
-      if (result.y < 0) result.y = 0;
+      let {x, y} = result;
+      if (typeof this.ex !== "number") this.ex = x;
+      if (typeof this.ey !== "number") this.ey = y;
+
+      this.ey = this.ey * (1 - lambda) + y * lambda;
+      this.ex = this.ex * (1 - lambda) + x * lambda;
+
+      x = this.ex;
+      y = this.ey;
+      if (x > 1) x = 1;
+      if (x < 0) x = 0;
+      if (y > 1) y = 1;
+      if (y < 0) y = 0;
+
       let [pos, size] = this.pointers.bbox;
-      rel = result.mul(size).add(pos);
+      rel = (new Vector(x, y)).mul(size).add(pos);
       this.blob.position = rel;
-      WebRTC.sendData({eye: {x: result.x, y: result.y}})
+      WebRTC.sendData({eye: {x: x, y: y}})
     }
 
     WebRTC.sendData({calibrating: this._calibrating})
@@ -435,7 +453,6 @@ class SessionFrame extends SvgPlus {
       WebRTC.sendData({features: input.features.serialise()})
     } 
   }
-
 
   async openFile(){
     let contentFile = await openContent();
@@ -453,7 +470,6 @@ class SessionFrame extends SvgPlus {
     WebRTC.uploadSessionContent(null);
     this.setFile(null);
   }
-
 
   async setFile(contentInfo){
     console.log(contentInfo);

@@ -157,10 +157,10 @@ class CalibrationFrame extends HideShow {
 	async calibrate_rradjusted() {
 		await this.showMessageCountDown("Keeping your head steady,<br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
 		this.sample_method = "steady";
-		await this.calibrate_scan(4, 2000);
+		await this.calibrate_scan(4, 4000);
 		await this.showMessageCountDown("This time move your <br/> head around and <br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
 		this.sample_method = "moving";
-		await this.calibrate_scan(4, 2000);
+		await this.calibrate_scan(4, 4000);
 	}
 	
 	async calibrate_rrcombined() {

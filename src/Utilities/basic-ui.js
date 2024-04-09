@@ -152,12 +152,14 @@ export class SvgResize extends HideShow {
     this.H = 0;
     this._drawbables = [];
   }
+
   resize(){
     let bbox = this.getBoundingClientRect();
     this.props = {viewBox: `0 0 ${bbox.width} ${bbox.height}`};
     this.W = bbox.width;
     this.H = bbox.height;
   }
+
 	draw(){
     for (let drawable of this._drawbables) {
       drawable.draw();
@@ -174,7 +176,8 @@ export class SvgResize extends HideShow {
     }
     return pointer;
   }
-  createGrid(gridIntrevals = 7){
+
+  createGrid(gridIntrevals = 5){
     let grid = this.createChild(Grid);
     grid.gridIntrevals = gridIntrevals;
     this._drawbables.push(grid);
@@ -182,6 +185,7 @@ export class SvgResize extends HideShow {
   }
 
 	resizeOnFrame(){this.start()}
+
   start(){
 		let stop = false;
 		this.stop();
@@ -197,6 +201,7 @@ export class SvgResize extends HideShow {
     }
     window.requestAnimationFrame(next);
   }
+
   stop(){}
 }
 
@@ -251,6 +256,7 @@ class BasePointer extends HideShow {
     } catch (e) {}
   }
 }
+
 const POINTERS = {
   calibration: class CPointer extends BasePointer {
     constructor(size, cOuter = "red", cInner = "darkred", cText = "white") {
@@ -356,13 +362,16 @@ const POINTERS = {
 }
 
 class Grid extends SvgPlus {
-  constructor(gridIntrevals = 7, color = "#00000020") {
+  constructor(gridIntrevals = 7, color = "#00000020", dotSize = 3, padding = 30) {
     super("g")
     this.gridIntrevals = gridIntrevals;
     this.color = color;
+    this.padding = padding;
+    this.dotSize = dotSize;
   }
   draw(){
-    let s = 3;
+    let s = this.padding;
+    let size = this.dotSize;
     let {W, H} = this.ownerSVGElement;
     if (this.lastW != W || this.lastH != H) {
       this.innerHTML = "";
@@ -370,7 +379,7 @@ class Grid extends SvgPlus {
       this.lastH = H;
       let grid = dotGrid(this.gridIntrevals, new Vector(s), new Vector(W-s, s), new Vector(s, H-s), new Vector(W-s, H-s));
       for (let p of grid) {
-        this.createChild("circle", {cx: p.x, cy: p.y, r: s, fill: this.color})
+        this.createChild("circle", {cx: p.x, cy: p.y, r: size, fill: this.color})
       }
     }
   }

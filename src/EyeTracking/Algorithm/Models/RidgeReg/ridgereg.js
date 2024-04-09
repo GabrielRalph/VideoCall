@@ -14,6 +14,7 @@ function ridgereg(y, X, k){
     var m_Coefficients = new Array(nc);
     var xt = mat.transpose(X);
     var solution = new Array();
+    let epocs = 0;
     var success = true;
     do{
         var ss = mat.mult(xt,X);
@@ -44,7 +45,9 @@ function ridgereg(y, X, k){
             console.log(ex);
             success = false;
         }
+        epocs ++;
     } while (!success);
+    console.log(epocs);
     return m_Coefficients;
 }
 

@@ -67,7 +67,7 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
    console.log(e);
    features.errors = e;
  }
-
+ features.facePoints = facePoints;
  features.serialise = () => serialiseFeatures(features);
 
  return features;
