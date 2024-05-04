@@ -304,6 +304,43 @@ const POINTERS = {
       this.circle.props = {r: size};
     }
   },
+  cursor: class MCursor extends BasePointer {
+    constructor(){
+      super();
+      this.icon = this.createChild("g");
+      // this.createChild("circle", {fill: "red", r: 2});
+      this.icon.innerHTML = `<path d="M5.8,16.4l1.9-1l1.6-0.8L6.7,9.8H11L-0.4-1.6v16l3.3-3.2L5.8,16.4z"/><path d="M6,15L7.8,14L5,8.8h3.6l-8-8V12l2.5-2.4L6,15z"/>`;
+      this.type = '00';
+    }
+
+    set type(type){
+      if (typeof type === "string" && type.length > 1) {
+        let b = this.icon.children[0];
+        let t = this.icon.children[1];
+
+        let size = 1 + parseInt(type[0]);
+        this.icon.props = {transform: `scale(${size})`}
+        switch(type[1]) {
+          case '0': 
+            b.style.setProperty("fill", "black");   
+            t.style.setProperty("fill", "white"); 
+          break
+          case '1': 
+            b.style.setProperty("fill", "white");
+            t.style.setProperty("fill", "black"); 
+          break
+          case '2': 
+            b.style.setProperty("fill", "#FFC107")
+            t.style.setProperty("fill", "black"); 
+          break
+        }
+      }
+    }
+    
+    setPosition(v) {
+      this.translate(v);
+    }
+  },
   blob: class BPointer extends BasePointer {
     constructor(size, bufferLength = 7){
       super();
@@ -529,4 +566,4 @@ export class PopUpFrame extends SvgPlus {
     return response;
   }
 }
-export {Vector, SvgPlus}
+export {Vector, SvgPlus, POINTERS}

@@ -1,6 +1,6 @@
 import {SvgPlus, Vector} from "./SvgPlus/4.js"
 import {WaveyCircleLoader, CopyIcon, FileLoadIcon} from "./Utilities/animation-icons.js"
-import {FloatingBox, HideShow, SvgResize} from "./Utilities/basic-ui.js"
+import {FloatingBox, HideShow, SvgResize, POINTERS} from "./Utilities/basic-ui.js"
 import {parallel, getCursorPosition, delay} from "./Utilities/usefull-funcs.js"
 import {VideoCallScreen, VideoCallWidget} from "./WebRTC/video-call-widget.js"
 import * as WebRTC from "./WebRTC/webrtc.js"
@@ -224,6 +224,51 @@ async function openContent(){
 }
 
 
+class MouseSelection extends SvgPlus {
+  constructor(){
+    super("div");
+
+    this.type = '01';
+    this.class = "mouse-icons"
+    this.createChild("div", {content: "Select Cursor Icon"})
+    this.r1 = this.createChild("div");
+    this.r2 = this.createChild("div");
+    this.update2();
+
+  }
+
+
+  update2(){
+    let {r2, r1} = this;
+    r2.innerHTML = "";
+    r1.innerHTML = "";
+    [0, 1, 2].forEach(a => {
+      let i = r1.createChild("svg", {viewBox: "0 0 25 25"}).createChild(POINTERS.cursor);
+      i.position = new Vector((25 - 11.4)/2, (25-15.5)/2);
+      i.type = "0" + a;
+      i.shown = true;
+      let s = i.parentNode;
+      if (a+"" === this.type[1]) s.toggleAttribute("selected", true);
+      s.onclick = () => {
+        this.type = this.type[0] + a;
+        this.update2();
+      }
+    });
+    [0, 1, 2].forEach(a => {
+      let  i = r2.createChild("svg", {viewBox: "0 0 52 52"}).createChild(POINTERS.cursor);
+      i.position = new Vector((52 - 11.4*(1+a))/2, (52-15.5*(1+a))/2);
+      i.type = a + this.type[1];
+      i.shown = true;
+      let s = i.parentNode;
+      if (a+"" === this.type[0]) s.toggleAttribute("selected", true);
+      s.onclick = () => {
+        this.type = a + this.type[1];
+        this.update2();
+      }
+    });
+  }
+}
+
 class SettingsPanel extends FloatingBox {
   constructor(){
     super("settings-panel");
@@ -231,9 +276,12 @@ class SettingsPanel extends FloatingBox {
     title.createChild("div", {content: "Settings"});
     let close = title.createChild("div", {class: "icon", content: Icons["close"]});
     close.onclick = () => this.hide();
+
+    this.mouseSelection = this.createChild(MouseSelection);
+    
+
     this.devicesList = this.createChild("div", {class: "device"});
     this.align = new Vector(0, 0.5)
-
   }
 
   async updateDevices(){
@@ -335,6 +383,11 @@ class SessionFrame extends SvgPlus {
       bottom: 0,
       "pointer-events": "none"
     }
+    this.cursors = this.createChild(SvgResize);
+    this.cursors.styles = pointers.styles;
+    this.cursors.start();
+    this.cursor = this.cursors.createPointer("cursor");
+    this.cursor.shown = true;
     this.grid = pointers.createGrid();
     this.grid.shown = true;
     this.blob = pointers.createPointer("blob", 50);
@@ -374,11 +427,14 @@ class SessionFrame extends SvgPlus {
     }
 
 
-    // window.addEventListener("mousemove", (e) => {
+    this.mouse_change = false;
+    this.mouse_event = null;
+    window.addEventListener("mousemove", (e) => {
+      this.mouse_event = e;
+      this.mouse_change = true;
+    })
+    this.updateMouse();
 
-    // })
-    // this.tool_bar.settings.addEventListener("contextmenu", (e) => {
-    // })
 
 
 
@@ -394,6 +450,15 @@ class SessionFrame extends SvgPlus {
   }
 
 
+  async updateMouse(){
+    while(true){
+      this.onMouseMove()
+      this.mouse_change = false;
+      await delay()
+    }
+  }
+
+
 
   async toggleSettings(){
   
@@ -402,6 +467,43 @@ class SessionFrame extends SvgPlus {
     } else {
       this.settings_panel.show();
     }
+  }
+
+
+
+  /* Broadcast mouse position relative to content if user is host.
+  */ 
+  onMouseMove(e = this.mouse_event){
+
+      if (e != null && this.hasContent && this.type == "host") {
+        let mouse = new Vector(e);
+        let bbox = this.pdf.displayBBox;
+        let rel = mouse.sub(bbox[0]).div(bbox[1]);
+        let type = this.settings_panel.mouseSelection.type;
+        this.cursors.show();
+        this.cursor.position = mouse
+        this.cursor.type = type
+        if (this.mouse_change) {
+          WebRTC.sendData({mouse: {x: rel.x, y: rel.y, type: type}})
+        }
+        this.pdf.style.setProperty("cursor", "none");
+        let isInPDF = false;
+        let el = document.elementFromPoint(mouse.x, mouse.y);
+        while (el != null) {
+          if (el.isSameNode(this.pdf)) isInPDF = true;
+          el = el.parentNode;
+        }
+        this.cursor.shown = isInPDF;
+      }
+  }
+
+  setCursor(rel) {
+    this.cursors.show();
+    this.cursor.type = rel.type;
+    let [pos, size] = this.pdf.displayBBox;
+    let absolute = size.mul(rel).add(pos);
+    this.cursor.position = absolute
+  
   }
 
 
@@ -539,6 +641,10 @@ class SessionFrame extends SvgPlus {
         this.calibration_frame.std = data.calibration_results;
       }
 
+      if ("mouse" in data) {
+        this.setCursor(data.mouse);
+      }
+
       if ("eye" in data) {
         let [pos, size] = this.pointers.bbox;
         let rel = (new Vector(data.eye)).mul(size).add(pos);
@@ -557,6 +663,7 @@ class SessionFrame extends SvgPlus {
   set state(state){
     if (state != null) {
       if ("type" in state) {
+        if (state.type == "participant") this.settings_panel.mouseSelection.remove();
         this.type = state.type;
       }
       if ("status" in state) {
@@ -711,6 +818,7 @@ class SessionFrame extends SvgPlus {
       this.error_frame.createChild("div", {style: {"font-size": "0.5em"}, content: "Try Again", class: "btn"}).onclick = () => {
         this.joinSession(key, forceParticipant);
       }
+      
       await parallel(this.loader.hide(), this.error_frame.show())
     }
   }

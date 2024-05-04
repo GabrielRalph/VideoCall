@@ -114,6 +114,10 @@ class PdfViewer extends SvgPlus {
     return this._displayType;
   }
 
+  get displayBBox(){
+    if (this.displayType == "pdf") return this.canvas.bbox;
+    else return this.image.bbox;
+  }
   // async openFile(){
   //   return await openFile();
   // }
