@@ -282,6 +282,7 @@ video-call-widget video {
 }
 video-call-widget[show-icons] video-display .icon-slot {
     opacity: 1;
+    pointer-events: all;
 }
 
 /* Video Display Icon Slot Style */
@@ -292,6 +293,7 @@ video-display .icon-slot {
     display: flex;
     align-items: center;
     opacity: 0;
+    pointer-events: none;
     transition: 0.3s ease-in opacity;
     cursor: pointer;
 }
@@ -444,6 +446,7 @@ pdf-viewer {
     display: flex;
     justify-content: space-evenly;
   }
+
   .mouse-icons svg {
     height: 52px;
     width: 52px;
@@ -451,7 +454,15 @@ pdf-viewer {
     cursor: pointer;
     padding: 5px;
   }
+
   .mouse-icons svg[selected] {
     background: #7a7878;
     border-radius: 0.5em;
   }
+
+
+
+
+body {
+    cursor: var(--cursor);
+}

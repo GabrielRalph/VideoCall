@@ -223,6 +223,32 @@ async function openContent(){
   });
 }
 
+const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
+function encodeSVG (data) {
+  // Use single quotes instead of double to avoid encoding.
+  data = data.replace(/"/g, `'`);
+
+  data = data.replace(/>\s{1,}</g, `><`);
+  data = data.replace(/\s{2,}/g, ` `);
+
+  // Using encodeURIComponent() as replacement function
+  // allows to keep result code readable
+  return data.replace(symbols, encodeURIComponent);
+}
+
+
+function setMouseSVG(svg) {
+    let svghtml = svg.outerHTML;
+    let g = svg.querySelector('g')
+    let [pos, size] = g.svgBBox;
+    let cursor = new SvgPlus("svg");
+    cursor.props = {width: size.x, height: size.y, xmlns: "http://www.w3.org/2000/svg", viewBox: `${pos.x} ${pos.y} ${size.x} ${size.y}`};
+    cursor.innerHTML = g.innerHTML;
+    let uri = encodeSVG(cursor.outerHTML);
+    console.log(uri);
+
+    document.body.style.setProperty("--cursor", `url("data:image/svg+xml,${uri}"), auto`);
+}
 
 class MouseSelection extends SvgPlus {
   constructor(){
@@ -266,6 +292,14 @@ class MouseSelection extends SvgPlus {
         this.update2();
       }
     });
+
+    setMouseSVG(this.r2.children[parseInt(this.type[0])]);
+    // const blob = new Blob([svghtml],{type: 'image/svg+xml'});
+    // var a = new FileReader();
+    // a.onload = (e) => {
+    // }
+    // a.readAsDataURL(blob);
+   
   }
 }
 
@@ -383,11 +417,13 @@ class SessionFrame extends SvgPlus {
       bottom: 0,
       "pointer-events": "none"
     }
+
     this.cursors = this.createChild(SvgResize);
     this.cursors.styles = pointers.styles;
     this.cursors.start();
     this.cursor = this.cursors.createPointer("cursor");
     this.cursor.shown = true;
+
     this.grid = pointers.createGrid();
     this.grid.shown = true;
     this.blob = pointers.createPointer("blob", 50);
@@ -480,20 +516,12 @@ class SessionFrame extends SvgPlus {
         let bbox = this.pdf.displayBBox;
         let rel = mouse.sub(bbox[0]).div(bbox[1]);
         let type = this.settings_panel.mouseSelection.type;
-        this.cursors.show();
-        this.cursor.position = mouse
-        this.cursor.type = type
+
+
+       
         if (this.mouse_change) {
           WebRTC.sendData({mouse: {x: rel.x, y: rel.y, type: type}})
         }
-        this.pdf.style.setProperty("cursor", "none");
-        let isInPDF = false;
-        let el = document.elementFromPoint(mouse.x, mouse.y);
-        while (el != null) {
-          if (el.isSameNode(this.pdf)) isInPDF = true;
-          el = el.parentNode;
-        }
-        this.cursor.shown = isInPDF;
       }
   }
 
@@ -503,18 +531,16 @@ class SessionFrame extends SvgPlus {
     let [pos, size] = this.pdf.displayBBox;
     let absolute = size.mul(rel).add(pos);
     this.cursor.position = absolute
-  
   }
 
 
   async toWidget(bool = true){
-  
     if (this.widgetShown != bool) {
       this._widgetShown = bool;
       if (bool) {
         await parallel(this.video_call_screen.hide(), this.video_widget.show());
       } else {
-        await parallel(this.video_call_screen.show(), this.video_widget.hide());
+        await parallel(this.video_call_screen.show(), this.video_widget.hide(), this.cursors.hide());
       }
     }
   }
