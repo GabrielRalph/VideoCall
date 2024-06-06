@@ -30,13 +30,22 @@ class VideoDisplay extends HideShow {
             position: "relative",
         }
         this.video = this.createChild("video", { autoplay: true, playsinline: true });
-        this.topLeft = this.createChild("div", {
-            class: "icon-slot",
+        this.buttons = this.createChild("div", {
             styles: {
                 position: "absolute",
-                top: 0,
-                left: 0
+                top: 0, 
+                left: 0,
+                gap: "0px",
+                display: "flex",
             }
+        })
+        this.topLeft = this.buttons.createChild("div", {
+            class: "icon-slot",
+            // styles: {
+            //     position: "absolute",
+            //     top: 0,
+            //     left: 0
+            // }
         });
         this.topRight = this.createChild("div", {
             class: "icon-slot",
@@ -47,20 +56,20 @@ class VideoDisplay extends HideShow {
             }
         });
         this.bottomRight = this.createChild("div", {
-            class: "icon-slot",
-            styles: {
-                position: "absolute",
-                bottom: 0,
-                right: 0
-            }
-        });
-        this.bottomLeft = this.createChild("div", {
-            class: "icon-slot",
+            class: "icon-slot name",
             styles: {
                 position: "absolute",
                 bottom: 0,
                 left: 0
             }
+        });
+        this.bottomLeft = this.buttons.createChild("div", {
+            class: "icon-slot",
+            // styles: {
+            //     position: "absolute",
+            //     bottom: 0,
+            //     left: 0
+            // }
         });
     }
 
@@ -108,6 +117,15 @@ class VideoDisplay extends HideShow {
         }
     }
 
+    set name(name) {
+        this.bottomRight.innerHTML = name;
+    }
+
+    set photo(src){
+        console.log("here");
+        // this.video.styles = {"background": `red`}
+    }
+
     set type(val) {
         if (val == "local") this.video.muted = true;
         this.setAttribute("type", val);
@@ -150,9 +168,16 @@ class VideoDisplay extends HideShow {
     set state(obj) {
         if (typeof obj === "object" && obj !== null && typeof this.type === "string" && this.type in obj){
             let sub = obj[this.type];
+            console.log(sub);
             if ("audio_muted" in sub) this.audio_muted = sub.audio_muted;
             if ("video_muted" in sub) this.video_muted = sub.video_muted;
             if ("stream" in sub) this.srcObject = sub.stream;
+            if ("name" in sub) {
+                let name = sub.name;
+                if (sub.pronouns) name = name + ` (${sub.pronouns})`;
+                this.name = name;
+            }
+            if ("photo" in sub) this.photo = sub.photo;
         }
     }
 }
@@ -362,8 +387,11 @@ export class VideoCallScreen extends HideShow {
         super(el);
         this.v1 = this.createChild(VideoDisplay);
         this.v1.type = "local";
+        this.v1.toggleAttribute("show-icons", true);
         this.v2 = this.createChild(VideoDisplay);
         this.v2.type = "remote";
+        this.v2.toggleAttribute("show-icons", true);
+
 
         addStateListener(this);
     }

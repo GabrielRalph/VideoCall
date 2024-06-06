@@ -8,7 +8,8 @@ let Listening = false;
 let CandidateListener = null;
 let DescriptionListener = null;
 let HostUIDListener = null;
-let ContentListener = null;
+let FieldListeners = [];
+
 let TickIntervalID = null;
 let messageHandler = () => {};
 
@@ -56,9 +57,52 @@ function removeListeners(){
   if (CandidateListener instanceof Function) CandidateListener();
   if (DescriptionListener instanceof Function) DescriptionListener();
   if (HostUIDListener instanceof Function) HostUIDListener();
-  if (ContentListener instanceof Function) ContentListener();
+  while(FieldListeners.length > 0) {
+    let listener = FieldListeners.pop();
+    if (listener instanceof Function) listener();
+  }
   if (TickIntervalID != null) clearInterval(TickIntervalID);
 }
+
+
+export const STATE_FIELDS = [
+  {
+    field: "content",
+    from: "host",
+    messageKey: "contentInfo"
+  },
+  {
+    field: "bubbleState",
+    from: "both",
+    messageKey: "bubbleState",
+  },
+  {
+    field: "contentTransform",
+    from: "host",
+    messageKey: "contentTransform"
+  }
+]
+
+async function addStateFieldListener(s, key, userType){
+  let listener = null;
+  let fieldRef = getSessionRef(key, s.field);
+  if (userType == s.from) {
+    // Get field state once at the start for the sender of this field
+    let fieldVal = (await get(fieldRef)).val();
+    if (fieldVal != null) {
+      messageHandler({data: {fieldState: {[s.messageKey]: fieldVal}}});
+    }
+  } else {
+    // Watch field for the recipient of the field
+    listener = onValue(fieldRef, (sc) => {
+      let fieldVal = sc.val();
+      messageHandler({data: {fieldState: {[s.messageKey]: fieldVal}}})
+    })
+    FieldListeners.push(listener);
+  }
+}
+
+
 
 const TICK_TIMEOUT_MINUTES = 5;
 // add signaling channel listeners
@@ -83,23 +127,30 @@ function addListeners(key, userType){
     }
   });
 
-  let contentRef = getSessionRef(key, "content");
-  if (userType == "host") {
-    // Get content information once at the start for host
-    let gc = async () => {
-      let contentInfo = (await get(contentRef)).val();
-      if (contentInfo != null) {
-        messageHandler({data: {contentInfo}});
-      }
-    }
-    gc();
-  } else {
-    // Watch content info for the participant
-    ContentListener = onValue(contentRef, (sc) => {
-      let contentInfo = sc.val();
-      messageHandler({data: {contentInfo}})
-    })
+
+  for (let s of STATE_FIELDS) {
+    addStateFieldListener(s, key, userType);
   }
+  // let contentRef = getSessionRef(key, "content");
+  // if (userType == "host") {
+  //   // Get content information once at the start for host
+  //   let gc = async () => {
+  //     let contentInfo = (await get(contentRef)).val();
+  //     if (contentInfo != null) {
+  //       messageHandler({data: {contentInfo}});
+  //     }
+  //   }
+  //   gc();
+  // } else {
+  //   // Watch content info for the participant
+  //   ContentListener = onValue(contentRef, (sc) => {
+  //     let contentInfo = sc.val();
+  //     messageHandler({data: {contentInfo}})
+  //   })
+  // }
+
+
+
 
   let descriptionRef = getSessionRef(key, `${listenTo}/description`);
   DescriptionListener = onChildAdded(descriptionRef, (sc) => {
@@ -182,7 +233,11 @@ export async function join(key, onmessage, forceParticipant = false) {
     let value = (await get(ref(`users/${hostUID}/info/${userType + key}`))).val();
     initialState[key.toLocaleLowerCase()] = value === false;
   }
+  for (let key of ["displayName", "displayPhoto", "pronouns"]) {
+    initialState[key] = (await get(ref(`users/${hostUID}/info/${key}`))).val();
+  }
   
+  console.log(initialState);
   addListeners(key, userType);
 
   return {iceServers, initialState};
@@ -228,6 +283,11 @@ export async function uploadSessionContent(file, callback) {
       })
     }
   }
+}
+
+export function setSessionStateField(field, value) {
+  let fieldRef = getSessionRef(getKey(), field, value);
+  set(fieldRef, value);
 }
 
 export function changeSessionContentPage(page) {

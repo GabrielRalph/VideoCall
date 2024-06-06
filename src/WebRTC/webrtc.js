@@ -258,13 +258,15 @@ function updateHandler(type, data){
 }
 
 // WebRTC negotiation event handlers
-async function onSignalerReceive({ data: { description, candidate, session_ended, contentInfo, usage } }) {
+async function onSignalerReceive({ data: { description, candidate, session_ended, fieldState, usage } }) {
   try {
     if (session_ended) {
       updateHandler("state", "ended")
       endSession();
-    }else if (contentInfo || contentInfo === null){
-      updateDataListeners({contentInfo});
+    }else if (fieldState){
+      if (typeof fieldState === "object" && fieldState !== null) {
+        updateStateListeners(fieldState);
+      }
     }else if (usage || usage === null){
       updateDataListeners({usage});
     }else if (description) {
@@ -607,16 +609,7 @@ export async function start(key, stream, forceParticipant){
   ended = false;
   let {iceServers, initialState} = await RTCSignaler.join(key, onSignalerReceive, forceParticipant);
   pc.setConfiguration({iceServers});
-  // Print Stats
-  // setInterval(async () => {
-  //   let stats = await pc.getStats();
-  //   for (let [id, stat] of stats) {
-  //     if (stat.type == "candidate-pair") {
-  //       console.log(`sent: ${stat.bytesSent/1024}kB\nrecv: ${stat.bytesReceived/1024}kB`);
-  //     }
-  //   }
-  // }, 1000)
-
+  
   remoteStream = null;
   localStream = stream;
   startMessageChannel();
@@ -629,7 +622,8 @@ export async function start(key, stream, forceParticipant){
   let at = localStream.getAudioTracks()[0];
   vt.enabled = !initialState.video
   at.enabled = !initialState.audio
-  updateStateListeners({
+
+  let state = {
     status: "started",
     type: getUserType(),
     local: {
@@ -637,7 +631,15 @@ export async function start(key, stream, forceParticipant){
       audio_muted: !at.enabled,
       video_muted: !vt.enabled,
     }
-  })
+  }
+  if (getUserType() == "host") {
+    state.local["name"] = initialState.displayName;
+    state.local["photo"] = initialState.displayPhoto;
+    state.local["pronouns"] = initialState.pronouns;
+  } else {
+    state.remote = {name: initialState.displayName, photo: initialState.displayPhoto, pronouns: initialState.pronouns};
+  }
+  updateStateListeners(state);
   updateHandler("status")
 }
 
@@ -688,8 +690,12 @@ export async function uploadSessionContent(file, callback){
   return await RTCSignaler.uploadSessionContent(file, callback)
 }
 
-export async function changeSessionContentPage(page){
-  return await RTCSignaler.changeSessionContentPage(page)
+export function setSessionFieldState(field, value) {
+  return RTCSignaler.setSessionStateField(field, value);
+}
+
+export function changeSessionContentPage(page){
+  return RTCSignaler.changeSessionContentPage(page)
 }
 
 let selectedOutput = null;

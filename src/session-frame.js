@@ -64,8 +64,17 @@ class ToolBar extends SvgPlus {
 
     this.calibrate = this.createChild("div", {class: "icon tbs", type: "calibrate", content: Icons["calibrate"]});
 
+    this.bubbleHidden = false;
+    this.viewBubble = this.createChild("div", {class: "icon tbs", type: "view-bubble", content: Icons["eye"]});
+    this.viewBubble.onclick = () => {
+      WebRTC.setSessionFieldState("bubbleState", this.bubbleHidden == true ? null : 'hidden');
+    }
+    
+
     let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
     i4.onclick = () => WebRTC.endSession();
+
+
 
     this.file = this.createChild("div", {class: "tbs icon", type: "file"});
     let fl = this.file.createChild(FileLoadIcon);
@@ -73,6 +82,8 @@ class ToolBar extends SvgPlus {
     fl.progress = 1;
     fl.props = {class: "icon"};
     this.fileProgress = fl;
+
+
 
     let pdf = this.createChild("div", {class: "group", styles: {display: "none"}});
     this.deletePdf = pdf.createChild("div", {class: "icon tbs", content:Icons["trash"]})
@@ -137,6 +148,16 @@ class ToolBar extends SvgPlus {
       if ("type" in state) {
         this.setAttribute("type", state.type);
       }
+
+      if ("bubbleState" in state) {
+        if (state.bubbleState === "hidden") {
+          this.bubbleHidden = true;
+          this.viewBubble.innerHTML = Icons["noeye"];
+        } else {
+          this.bubbleHidden = false;
+          this.viewBubble.innerHTML = Icons["eye"];
+        }
+      }
     }
   }
 
@@ -196,13 +217,7 @@ class FeedbackWindow extends FloatingBox {
   }
 }
 
-/* 
 
-calibrated: true, false
-             1     0
-calibrating: not-calibrating feedback, calibration, results
-                0               1         2           3 
-*/
 
 async function openContent(){
   let input = new SvgPlus("input");
@@ -245,8 +260,6 @@ function setMouseSVG(svg) {
     cursor.props = {width: size.x, height: size.y, xmlns: "http://www.w3.org/2000/svg", viewBox: `${pos.x} ${pos.y} ${size.x} ${size.y}`};
     cursor.innerHTML = g.innerHTML;
     let uri = encodeSVG(cursor.outerHTML);
-    console.log(uri);
-
     document.body.style.setProperty("--cursor", `url("data:image/svg+xml,${uri}"), auto`);
 }
 
@@ -391,7 +404,6 @@ class SessionFrame extends SvgPlus {
     this.video_widget.addEventListener("move", () => {
       let ypos = -1 * this.video_widget.relativePosition.y;
       this.tool_bar.top = ypos > 0.5;
-      console.log(ypos);
       
     });
     this.fileProgress = this.tool_bar.fileProgress;
@@ -472,6 +484,10 @@ class SessionFrame extends SvgPlus {
     this.updateMouse();
 
 
+    this.addEventListener("transform", (e) => {
+      console.log(e.transform);
+      WebRTC.setSessionFieldState("contentTransform", e.transform);
+    })
 
 
     let key = getQueryKey();
@@ -497,7 +513,6 @@ class SessionFrame extends SvgPlus {
 
 
   async toggleSettings(){
-  
     if (this.settings_panel.shown) {
       this.settings_panel.hide()
     } else {
@@ -510,17 +525,16 @@ class SessionFrame extends SvgPlus {
   /* Broadcast mouse position relative to content if user is host.
   */ 
   onMouseMove(e = this.mouse_event){
-
       if (e != null && this.hasContent && this.type == "host") {
-        let mouse = new Vector(e);
-        let bbox = this.pdf.displayBBox;
-        let rel = mouse.sub(bbox[0]).div(bbox[1]);
-        let type = this.settings_panel.mouseSelection.type;
-
-
-       
-        if (this.mouse_change) {
-          WebRTC.sendData({mouse: {x: rel.x, y: rel.y, type: type}})
+        try {
+          let mouse = new Vector(e);
+          let bbox = this.pdf.displayBBox;
+          let rel = mouse.sub(bbox[0]).div(bbox[1]);
+          let type = this.settings_panel.mouseSelection.type;
+          if (this.mouse_change) {
+            WebRTC.sendData({mouse: {x: rel.x, y: rel.y, type: type}})
+          }
+        } catch(e) {
         }
       }
   }
@@ -587,6 +601,7 @@ class SessionFrame extends SvgPlus {
     WebRTC.uploadSessionContent(contentFile, (p) => {
       this.fileProgress.progress = p;
     });
+    this.pdf.resetTransform();
     await this.setFile({
       url: contentFile.url,
       page: 1,
@@ -600,7 +615,6 @@ class SessionFrame extends SvgPlus {
   }
 
   async setFile(contentInfo){
-    console.log(contentInfo);
     await this.pdf.updateContentInfo(contentInfo);
     if (this.type === "host") {
       this.tool_bar.updatePDFControls(this.pdf);
@@ -651,13 +665,12 @@ class SessionFrame extends SvgPlus {
         }
       }
 
-      if ("contentInfo" in data) {
-        this.setFile(data.contentInfo)
-      }
+      
 
-      if ("pdf" in data) {
-        this.setPage(data.pdf, false)
-      }
+      // if ("pdf" in data) {
+      //   console.log(data);
+      //   this.setPage(data.pdf, false)
+      // }
 
       if ("calibrating" in data) {
        this.calibration_state_host = data.calibrating;
@@ -689,7 +702,11 @@ class SessionFrame extends SvgPlus {
   set state(state){
     if (state != null) {
       if ("type" in state) {
-        if (state.type == "participant") this.settings_panel.mouseSelection.remove();
+        if (state.type == "participant") {
+          this.settings_panel.mouseSelection.remove();
+        } else {
+          this.pdf.transformable = true;
+        }
         this.type = state.type;
       }
       if ("status" in state) {
@@ -703,6 +720,19 @@ class SessionFrame extends SvgPlus {
         if ("stream" in state.remote) {
           this.feedback_window.frame.videoStream = state.remote.stream;
         }
+      }
+
+      if ("contentInfo" in state) {
+        console.log("content", state.contentInfo);
+        this.setFile(state.contentInfo)
+      }
+
+      if ("bubbleState" in state) {
+        this.blob.shown = state.bubbleState !== "hidden";
+      }
+
+      if ("contentTransform" in state) {
+        this.pdf.contentTransform = state.contentTransform;
       }
       // if ("file" in state) {
       //   this.fileProgress.progress = state.file.progress;
@@ -728,7 +758,6 @@ class SessionFrame extends SvgPlus {
     if (state != this._c_state) {
       console.log(state, this._c_state);
       this._c_state = state;
-      console.log(state);
       switch(state) {
         case 0:
           this.widgetShown = this.hasContent;
