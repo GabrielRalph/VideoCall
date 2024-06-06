@@ -11,9 +11,9 @@ function getFacePointsSelect(X) {
   for (let key of ["lefteye", "righteye"]) {
     for (let v of X.facePoints[key].all) {
       newX.push(v.v3d);
-     
     }
   }
+ 
   for (let v of X.facePoints.plane) {
     newX.push(v.v3d);
   }
@@ -91,8 +91,10 @@ export default class RRAdjusted extends EyeGazeModelInterface {
   train(data) {
     let myX = [];
     for (let {X, y} of data) {
-      let Xp = getFacePointFeatures(X);
-      myX.push({X: Xp, y: y});
+      try {
+        let Xp = getFacePointFeatures(X);
+        myX.push({X: Xp, y: y});
+      } catch(e) {console.log(e);}
     }
     console.log(myX);
     this.MP = ridgeregvec(myX);
@@ -101,8 +103,12 @@ export default class RRAdjusted extends EyeGazeModelInterface {
   predict(X) {
     let y = null;
     if (this.MP) {
-      let x = getFacePointFeatures(X);
-      y = this.MP.predict(x);
+      try {
+        let x = getFacePointFeatures(X);
+        y = this.MP.predict(x);
+      } catch (e) {
+        console.log(e);
+      }
     }
     return y;
   }
