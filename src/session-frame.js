@@ -551,6 +551,7 @@ class SessionFrame extends SvgPlus {
   async toWidget(bool = true){
     if (this.widgetShown != bool) {
       this._widgetShown = bool;
+      
       if (bool) {
         await parallel(this.video_call_screen.hide(), this.video_widget.show());
       } else {
@@ -665,19 +666,16 @@ class SessionFrame extends SvgPlus {
         }
       }
 
-      
-
-      // if ("pdf" in data) {
-      //   console.log(data);
-      //   this.setPage(data.pdf, false)
-      // }
-
       if ("calibrating" in data) {
        this.calibration_state_host = data.calibrating;
       }
 
       if ("calibration_results" in data) {
-        this.calibration_frame.std = data.calibration_results;
+        if (typeof data.calibration_results === 'string') {
+          this.calibration_frame.showMessage(data.calibration_results);
+        } else {
+          this.calibration_frame.std = data.calibration_results;
+        }
       }
 
       if ("mouse" in data) {
@@ -763,14 +761,17 @@ class SessionFrame extends SvgPlus {
           this.widgetShown = this.hasContent;
           console.log(this.hasContent);
           this.feedback_window.hide();
+          break;
         case 4: // calibrated
           this.widgetShown = true;
           this.pointers.show();
+          this.feedback_window.hide();
           break;
         case 1: // calibrated and in feedback
           this.widgetShown = true;
           this.pointers.hide();
           this.feedback_window.show();
+          this.loader.hide();
           break;
         case 2: // not calibrated and calibrating
           this.widgetShown = false;
@@ -784,6 +785,9 @@ class SessionFrame extends SvgPlus {
           break;
       }
     }
+  }
+  get calibration_state_host(){
+    return this._c_state;
   }
 
 
@@ -802,11 +806,10 @@ class SessionFrame extends SvgPlus {
     if (this.type == "host") {
       WebRTC.sendData({calibrate: 0})
     } else {
-      this._calibrating = 0;
+      this._calibrating = this._calibrated === true ? 4 : 0;
       await this.feedback_window.hide();
-      console.log(this.hasContent);
-      await this.toWidget(this.hasContent);
-
+      if (this._calibrated === true) this.pointers.show();
+      await this.toWidget(this.hasContent || this._calibrated === true);
     }
   }
 
@@ -817,14 +820,25 @@ class SessionFrame extends SvgPlus {
       await this.feedback_window.hide();
       this._calibrating = 2;
       await this.calibration_frame.show();
-      await this.calibration_frame.calibrate();
-      this._calibrating = 3;
-      WebRTC.sendData({calibration_results: this.calibration_frame.std});
-      await this.calibration_frame.show_results();
-      await this.calibration_frame.hide();
-      this._calibrating = 4;
-      this.pointers.start();
-      await this.pointers.show();
+      try {
+        await this.calibration_frame.calibrate();
+        this._calibrating = 3;
+        WebRTC.sendData({calibration_results: this.calibration_frame.std});
+        await this.calibration_frame.show_results();
+        await this.calibration_frame.hide();
+        this._calibrating = 4;
+        this._calibrated = true;
+        this.pointers.start();
+        await this.pointers.show();
+      } catch (e) {
+        console.log(e);
+        WebRTC.sendData({calibration_results: "Error during calibration please try again."});
+        await this.calibration_frame.showMessage("Error during calibration please try again.")
+        await delay(3000);
+        this._calibrating = 1;
+        this.feedback_window.show();
+        this.calibration_frame.hide();
+      }
     }
   }
 

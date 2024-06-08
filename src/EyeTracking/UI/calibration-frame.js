@@ -95,10 +95,10 @@ class CalibrationFrame extends HideShow {
 
 	async calibrate_grid(grid = 3, counts = 4) {
 		let { tl, tr, bl, br } = this;
-		this.sample_method = "grid" + grid;
+		this.sample_method = "static";
 		let points = dotGrid(grid, tl, tr, bl, br);
 		await this.showMessageCountDown("Focus on the red dot<br/>as it appears on the screen.<br/>$$");
-		await this.calibrateAtPoints(points, counts);
+		await this.calibrate_points(points, counts);
 	}
 	async calibrate_points(points, counts) {
 		let { pointer } = this;
@@ -155,12 +155,14 @@ class CalibrationFrame extends HideShow {
 	}
 
 	async calibrate_rradjusted() {
-		await this.showMessageCountDown("Keeping your head steady,<br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
+		// await this.showMessageCountDown("Keeping your head steady,<br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
 		this.sample_method = "steady";
-		await this.calibrate_scan(4, 4000);
-		await this.showMessageCountDown("This time move your <br/> head around and <br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
-		this.sample_method = "moving";
-		await this.calibrate_scan(4, 4000);
+		// await this.calibrate_grid(4, 2);
+		await this.calibrate_scan(7, 5000);
+		// await this.showMessageCountDown("This time move your <br/> head around and <br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
+		// await this.calibrate_scan(4, 4000);
+		// this.sample_method = "moving";
+		// await this.calibrate_scan(4, 4000);
 	}
 	
 	async calibrate_rrcombined() {
@@ -173,7 +175,7 @@ class CalibrationFrame extends HideShow {
 		await this.calibrate_rradjusted();
 		await this.showMessage("Calibrating eye tracking...");
 		let error = Algorithm.trainModel();
-		this.std = error[0].validation.std.norm();
+		this.std = error.validation.std.norm();
 		await this.hideMessage();
 		
 	}

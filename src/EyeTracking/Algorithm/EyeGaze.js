@@ -6,29 +6,30 @@ import ModelLibrary from "./Models/ModelLibrary.js"
 const SampleMethods = {
   "steady": "head is kept still whilst calibrating",
   "moving": "head is moving whilst calibrating",
+  "static": "static points are viewed for a certain amount of time",
 }
 let Models = null;
-let I = 0;
-let Meta = false;
-window.addEventListener("keydown", (e) => {
-  console.log(e.key, Meta);
-  if (e.key == "Meta") {
-    Meta = true;
-    setTimeout(3000, () => {Meta = false})
-  } else if (Meta && e.key == "m") {
-    console.log("Change Model");
-    if (Models) {
-      let keys = Object.keys(Models)
-      let n = keys.length;
-      I = (I + 1) % n;
-      console.log("Model " + keys[I]);
-    }
-    e.preventDefault();
-  }
-})
-window.addEventListener("keyup", (e) => {
-  if (e.key == "Meta") Meta = false;
-})
+let SelectedModel = "RRVectors";
+// let Meta = false;
+// window.addEventListener("keydown", (e) => {
+//   console.log(e.key, Meta);
+//   if (e.key == "Meta") {
+//     Meta = true;
+//     setTimeout(3000, () => {Meta = false})
+//   } else if (Meta && e.key == "m") {
+//     console.log("Change Model");
+//     if (Models) {
+//       let keys = Object.keys(Models)
+//       let n = keys.length;
+//       I = (I + 1) % n;
+//       console.log("Model " + keys[I]);
+//     }
+//     e.preventDefault();
+//   }
+// })
+// window.addEventListener("keyup", (e) => {
+//   if (e.key == "Meta") Meta = false;
+// })
 
 
 let SampleData = [];
@@ -65,21 +66,23 @@ function processFrame(input) {
 
 export function trainModel(sampleRate = 0.8){
   Webcam.stopProcessing();
-  Models = {};
-  let stats = [];
-  for (let model in ModelLibrary) {
-    Models[model] = new ModelLibrary[model].model();
-    stats.push(Models[model].trainAndValidate(SampleData, sampleRate));
+  let stats = null;
+  try{
+    Models = new ModelLibrary[SelectedModel].model();
+    stats = Models.trainAndValidate(SampleData, sampleRate);
+  } catch (e) {
+    console.log("training error");
   }
   Webcam.startProcessing();
   SampleData = [];
+  if (stats == null) throw new Error("Training Error.")
   return stats;
 }
 function predictScreenPosition(X, kfilter = true) {
   let y = null;
   if (Models) {
     try {
-      let model = Models[Object.keys(Models)[I]];
+      let model = Models;
       y = model.predictAndFilter(X);
     } catch(e) {console.log(e);}
   }

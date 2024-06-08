@@ -24,13 +24,19 @@ function getFacePointsSelect(X) {
 function getFacePointFeatures(X) {
   let fps = getFacePointsSelect(X);
   let newX = [];
+  let minz = null;
+  let maxz = null;
   for (let p of fps) {
-    newX.push(p.x);
-    newX.push(p.y);
-    // newX.push(p.y * p.y);
-    newX.push(p.z);
-    // newX.push(p.z * p.z);
+    if (minz == null || p.z < minz) minz = p.z;
+    if (maxz == null || p.z > maxz) maxz = p.z;
   }
+  for (let p of fps) {
+    let pnorm = p.div(X.videoWidth, X.videoHeight, 1)
+    newX.push(pnorm.x);
+    newX.push(pnorm.y);
+    newX.push((pnorm.z - minz) / (maxz - minz));
+   
+  } 
 
   return newX;
 }
