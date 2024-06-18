@@ -70,14 +70,19 @@ export function lurp4(x, y, tl, tr, bl, br) {
 }
 
 export function dotGrid(size, tl, tr, bl, br) {
-	let dd = 1 / (size - 1);
-	let points = [];
-	for (let y = 0; y < size; y++) {
-		for (let x = 0; x < size; x++) {
-			let p = lurp4(x*dd, y*dd, tl, tr, bl, br);
-			points.push(p);
-		}
-	}
+
+  let points = [];
+  if (size == 1) {
+    points.push(tl.add(br).div(2));
+  } else {
+    let dd = 1 / (size - 1);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let p = lurp4(x*dd, y*dd, tl, tr, bl, br);
+        points.push(p);
+      }
+    }
+  }
 	return points;
 }
 

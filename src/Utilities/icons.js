@@ -22,7 +22,7 @@ for (let name in IconLibrary) {
     Icons[name] = svg.outerHTML;
 
   } catch(e) {
-
+    console.log(name, e);
   }
 }
 export {Icons}

@@ -16,7 +16,7 @@
     --ic2: white;
     --ic3: #db4a4a;
     --ic4: #ff4646;
-    
+    --color-danger: #8f53c9;
     --wc: #252222;
     --wc2: #252222ca;
     
@@ -32,7 +32,7 @@
 /* Video Call Widget Style  */
 video-call-widget {
 
-    position: fixed;
+    position: absolute;
     top: 10px;
     left: 50%;
     display: flex;
@@ -50,6 +50,12 @@ video-call-widget[landscape] {
     width: var(--wi);
 }
 
+
+.rel {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
 video-call-widget .rel {
     position: relative;
     height: 100%;
@@ -66,6 +72,33 @@ video-call-widget .main-content {
 }
 
 /*  */
+
+.side-window {
+    padding: 0.5em;
+    background: var(--tbc);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.7em;
+
+}
+
+.side-window > * {
+    display: flex;
+    flex-direction: column;
+}
+
+/* one item */
+.side-window > *:first-child:nth-last-child(1) {
+    height: 100%;
+}
+    
+/* two items */
+.side-window > *:first-child:nth-last-child(2),
+.side-window > *:first-child:nth-last-child(2) ~ * {
+    height: 50%;
+}
+
+
 popup-info {
     border-radius: 0.5em;
     color: #d5d5d5;
@@ -74,29 +107,35 @@ popup-info {
     text-align: center;
 }
 
+
 settings-panel {
-    border-radius: 0 0.5em 0.5em 0;
-    color: #d5d5d5;
-    background: var(--wc2);
-    border: var(--sp) solid var(--tbc);
-    backdrop-filter: blur(3px);
-    font-size: 0.8em;
+    color: black;
 }
 
-settings-panel * {
-    padding: 0.3em;
-    padding-left: 1em;
+.main-items {
+    background: white;
+    border-radius: 0.3em;
+    padding: 0 1em;
+    overflow-y: scroll;
+    height: 100%;
 }
 
-settings-panel > .title {
+settings-panel > .main-items * {
+    padding: 0.3em 0;
+    /* padding-left: 1em; */
+}
+
+.title {
     border-bottom: var(--sp) solid var(--tbc);
     padding: 0.3em;
     font-size: 1.3em;
     font-weight: bold;
     display: flex;
     justify-content: space-between;
+    color: white;
 }
-settings-panel *:first-child {
+
+settings-panel .main-items > * *:first-child {
     font-weight: bold;
     font-size: 1.15em;
 }
@@ -112,18 +151,18 @@ settings-panel .track-icon[selected] {
 }
 settings-panel .track-icon:not([selected]) .icon {
     opacity: 0;
+    width: 0;
 }
 
 settings-panel .track-icon * {
     padding: 0;
+    fill: var(--color-danger);
 }
 
-settings-panel .device {
-    max-height: 60vh;
-    overflow-y: scroll;
-}
+
+
 settings-panel .device > *:nth-child(n+3) {
-    border-top: var(--sp) solid var(--tbc);
+    /* border-top: var(--sp) solid var(--tbc); */
 }
 
 /* ~~~~ Side Bar Style ~~~~ */
@@ -340,7 +379,7 @@ tool-bar {
     /* gap: var(--sp); */
     background: var(--wc);
     border-radius: var(--br);
-    position: fixed;
+    position: absolute;
     bottom: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
     left: 50%;
     transform: translate(-50%, 0);
@@ -484,4 +523,14 @@ pdf-viewer {
 body {
     cursor: var(--cursor);
     overflow: hidden;
+}
+
+
+session-frame {
+    /* position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex; */
 }

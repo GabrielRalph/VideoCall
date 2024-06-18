@@ -70,6 +70,8 @@ class ToolBar extends SvgPlus {
       WebRTC.setSessionFieldState("bubbleState", this.bubbleHidden == true ? null : 'hidden');
     }
     
+    this.apps = this.createChild("div", {class: "icon tbs", type: "apps", content: Icons["apps"]});
+
 
     let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
     i4.onclick = () => WebRTC.endSession();
@@ -316,20 +318,37 @@ class MouseSelection extends SvgPlus {
   }
 }
 
-class SettingsPanel extends FloatingBox {
+
+class AppsPanel extends SvgPlus{
+  constructor(){
+    super("apps-panel");
+    let title = this.createChild("div", {class: "title"});
+    title.createChild("div", {content: "Apps"});
+    let close = title.createChild("div", {class: "icon", content: Icons["close"]});
+    this.close = close;
+
+    this.main = this.createChild("div", {class: "main-items"});
+    this.main.innerHTML = "Coming Soon"
+    
+   
+  }
+}
+
+
+class SettingsPanel extends SvgPlus{
   constructor(){
     super("settings-panel");
     let title = this.createChild("div", {class: "title"});
     title.createChild("div", {content: "Settings"});
     let close = title.createChild("div", {class: "icon", content: Icons["close"]});
-    close.onclick = () => this.hide();
+    this.close = close;
 
-    this.mouseSelection = this.createChild(MouseSelection);
-    
-
-    this.devicesList = this.createChild("div", {class: "device"});
-    this.align = new Vector(0, 0.5)
+    this.main = this.createChild("div", {class: "main-items"});
+    this.mouseSelection = this.main.createChild(MouseSelection);
+    this.devicesList = this.main.createChild("div", {class: "device"});
   }
+
+  
 
   async updateDevices(){
     let devices = await WebRTC.getTrackSelection();
@@ -369,22 +388,6 @@ class SettingsPanel extends FloatingBox {
     }
   }
 
-  // async hide(){
-  //   console.log("hide");
-  //   super.hide(700);
-  //   await this.waveTransition((t) =>{
-  //     this.align = new Vector(-0.3 * t, 0.5)
-  //   }, 700, true);
-  // }
-
-  async show(duration = 700, hide = false){
-    
-    await this.updateDevices();
-    super.show(duration, hide);
-    await this.waveTransition((t) =>{
-      this.align = new Vector(-0.4 * t, 0.5)
-    }, duration, hide);
-  }
 }
 
 class SessionFrame extends SvgPlus {
@@ -393,11 +396,17 @@ class SessionFrame extends SvgPlus {
     this.frameContent = this.innerHTML;
     this.innerHTML = "";
 
-    this.session_content = this.createChild("div", {name: "content"});
+    let main = this.createChild("div", {styles: {position: "absolute", top: "0px", left: "0px", right: "0%", bottom: "0px"}});
+    let rel = main.createChild("div", {class: "rel"});
+    let side_window = this.createChild("div", {class: "side-window", styles: {position: "absolute", top: "0px", left: "70%", right: "0px", bottom: "0px", transform: "translateX(100%)"}})
+    this.main_window = main;
+    this.side_window = side_window;
+
+    this.session_content = rel.createChild("div", {name: "content"});
     this.pdf = this.session_content.createChild(PdfViewer);
 
   
-    this.web_rtc = this.createChild("div", {name: "webrtc"});
+    this.web_rtc = rel.createChild("div", {name: "webrtc"});
     this.video_widget = this.web_rtc.createChild(VideoCallWidget);
     this.video_call_screen = this.web_rtc.createChild(VideoCallScreen);
     this.tool_bar = this.web_rtc.createChild(ToolBar);
@@ -411,16 +420,18 @@ class SessionFrame extends SvgPlus {
     this.popup_info.align = new Vector(0.5, 0.2);
     this.web_rtc.appendChild(this.popup_info);
 
-  
-    this.settings_panel = this.web_rtc.createChild(SettingsPanel)
+    
+    this.apps_panel = new AppsPanel();
+    this.apps_panel.close.onclick = () =>  this.hideInSideWindow("apps");
+    this.settings_panel = new SettingsPanel();
+    this.settings_panel.close.onclick = () => this.hideInSideWindow("settings");
+    this.side_window_items = {
+      settings: this.settings_panel,
+      apps: this.apps_panel
+    }
 
 
-    // this.fileProgress = this.web_rtc.createChild(FileLoadIcon);
-    // this.fileProgress.show();
-
-
-
-    let pointers = this.createChild(SvgResize);
+    let pointers = rel.createChild(SvgResize);
     pointers.styles = {
       position: "absolute",
       top: 0,
@@ -430,7 +441,7 @@ class SessionFrame extends SvgPlus {
       "pointer-events": "none"
     }
 
-    this.cursors = this.createChild(SvgResize);
+    this.cursors = rel.createChild(SvgResize);
     this.cursors.styles = pointers.styles;
     this.cursors.start();
     this.cursor = this.cursors.createPointer("cursor");
@@ -442,7 +453,7 @@ class SessionFrame extends SvgPlus {
     this.blob.shown = true;
     this.pointers = pointers;
 
-    this.calibration_content = this.createChild("div");
+    this.calibration_content = rel.createChild("div");
     this.calibration_frame = this.calibration_content.createChild(CalibrationFrame);
     this.feedback_window = this.calibration_content.createChild(FeedbackWindow);
     this.feedback_window.align = "center"
@@ -450,7 +461,7 @@ class SessionFrame extends SvgPlus {
     this.feedback_window.cancel.onclick = () => this.cancel_calibration();
 
     
-    this.loader = this.createChild(WaveyCircleLoader);
+    this.loader = rel.createChild(WaveyCircleLoader);
     this.loader.styles = {width: "30%"};
     this.loader.align = "center";
     this.loader.shown = true;
@@ -470,8 +481,10 @@ class SessionFrame extends SvgPlus {
     this.tool_bar.right.onclick = () => this.setPage(1);
     this.tool_bar.deletePdf.onclick = () => this.removeFile();
     this.tool_bar.deleteImage.onclick = () => this.removeFile();
+    this.tool_bar.apps.onclick = () => this.showInSideWindow("apps");
     this.tool_bar.settings.onclick = () => {
-      this.toggleSettings();
+      this.settings_panel.updateDevices();
+      this.showInSideWindow("settings")
     }
 
 
@@ -512,12 +525,41 @@ class SessionFrame extends SvgPlus {
 
 
 
-  async toggleSettings(){
-    if (this.settings_panel.shown) {
-      this.settings_panel.hide()
-    } else {
-      this.settings_panel.show();
+  async hideInSideWindow(name) {
+    if (name in this.side_window_items) {
+      let window = this.side_window_items[name];
+      if (this.side_window.contains(window)) {
+        if (this.side_window.children.length == 1 && this._side_open) {
+          await this.toggleSideWindow(false);
+        }
+        window.remove();
+      } else {
+        this.showInSideWindow(name);
+      }
     }
+  }
+
+  showInSideWindow(name) {
+    if (name in this.side_window_items) {
+      let window = this.side_window_items[name];
+      if (!this.side_window.contains(window)) {
+        this.side_window.appendChild(window);
+        if (!this._side_open) {
+          this.toggleSideWindow(true);
+        }
+      } else {
+        this.hideInSideWindow(name);
+      }
+    }
+  }
+
+  async toggleSideWindow(bool = !this._side_open) {
+    let size = 30;
+    this._side_open = bool;
+    await this.waveTransition((t) => {
+      this.main_window.styles = {right: `${size*t}%`}
+      this.side_window.styles = {transform: `translateX(${100 * (1-t)}%)`}
+    }, 250, bool);
   }
 
 

@@ -4,8 +4,8 @@ import { CopyIcon } from "../Utilities/animation-icons.js"
 import { elementAtCursor, getCursorPosition } from "../Utilities/usefull-funcs.js"
 import { endSession, muteTrack, addStateListener, getKey, makeKeyLink } from "./webrtc.js"
 
-function check_snap(p0, p1) {
-    let { innerWidth, innerHeight } = window;
+function check_snap(p0, p1, size) {
+    let [ innerWidth, innerHeight ] = [size.x, size.y];
     let crns = [new Vector(0, 0), new Vector(innerWidth, 0), new Vector(innerWidth, innerHeight), new Vector(0, innerHeight)];
     let mind = innerWidth * innerWidth;
     let minv = null;
@@ -15,6 +15,7 @@ function check_snap(p0, p1) {
             minv = v;
         }
     }
+    console.log(minv);
     if (mind < minv.dist(p0) && mind < 20) {
         return minv;
     } else {
@@ -257,6 +258,20 @@ class DragCollapseWidget extends HideShow {
             this.position = this.relativePosition;
         })
 
+        let oldSize = new Vector();
+        let next = () => {
+            let size = this.screenSize;
+            let delta = size.dist(oldSize);
+            if (delta > 1e-3) {
+                this.position = this.relativePosition;
+            }
+            oldSize = size;
+            window.requestAnimationFrame(next);
+
+        }
+        window.requestAnimationFrame(next);
+
+
 
         let timeout = null;
         let tf = () => {
@@ -330,23 +345,26 @@ class DragCollapseWidget extends HideShow {
      */
     set position(v) {
         v = new Vector(v);
+
         let { innerWidth, innerHeight } = window;
-        if (v.x < 0) v.x = -1 * v.x * innerWidth;
-        if (v.y < 0) v.y = -1 * v.y * innerHeight;
+        let size = this.screenSize;
+        console.log(size);
+        if (v.x < 0) v.x = -1 * v.x * size.x;
+        if (v.y < 0) v.y = -1 * v.y * size.y;
 
         let m = this.margin;
         if (v.x < m) v.x = m;
         if (v.y < m) v.y = m;
-        if (v.x > innerWidth - m) v.x = innerWidth - m;
-        if (v.y > innerHeight - m) v.y = innerHeight - m;
-        let trns = v.sub(m).div(innerWidth - 2 * m, innerHeight - 2 * m).mul(-100);
+        if (v.x > size.x - m) v.x = size.x - m;
+        if (v.y > size.y - m) v.y = size.y - m;
+        let trns = v.sub(m).div(size.x - 2 * m, size.y - 2 * m).mul(-100);
         this.styles = {
             top: `${v.y}px`,
             left: `${v.x}px`,
             transform: `translate(${trns.x}%, ${trns.y}%)`
         }
         this._pos = v;
-        this._rel_pos = v.div(new Vector(innerWidth, innerHeight)).mul(-1);
+        this._rel_pos = v.div(size).mul(-1);
         const event = new Event("move");
         this.dispatchEvent(event);
     }
@@ -363,21 +381,38 @@ class DragCollapseWidget extends HideShow {
         return pos;
     }
 
+    get screenSize(){
+        let ofp = this.offsetParent;
+        let size = new Vector(window.innerWidth, window.innerHeight);
+        if (ofp) {
+            size = ofp.bbox[1];
+            if (!(size instanceof Vector)) size = new Vector(window.innerWidth, window.innerHeight);
+        }
+        if (size.x < 1e-2) size.x = 1e-2;
+        if (size.y < 1e-2) size.y = 1e-2;
+        return size;
+    }
+
  
     moveDelta(delta) {
-        let { innerWidth, innerHeight } = window;
+
+        // let { innerWidth, innerHeight } = window;
+        let size = this.screenSize;
+        console.log(size);
+
         delta = new Vector(delta);
         let bs = this.bbox[1];
         let p0 = this._pos;
 
-        let a = bs.div(innerWidth, innerHeight);
+        let a = bs.div(size);
         let denom = (new Vector(1)).sub(a);
         let deltaAd = delta.div(denom);
 
         let newPos = this._pos.add(deltaAd);
+        console.log(newPos, p0);
         if (newPos.x < 1) newPos.x = 1;
         if (newPos.y < 1) newPos.y = 1;
-        this.position = check_snap(p0, newPos);
+        this.position = check_snap(p0, newPos, size);
     }
 
 }
