@@ -71,7 +71,7 @@ export function trainModel(sampleRate = 0.8){
     Models = new ModelLibrary[SelectedModel].model();
     stats = Models.trainAndValidate(SampleData, sampleRate);
   } catch (e) {
-    console.log("training error");
+    console.log("training error", e);
   }
   Webcam.startProcessing();
   SampleData = [];

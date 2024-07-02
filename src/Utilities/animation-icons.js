@@ -142,7 +142,7 @@ function createPiePath(r, angle, center = new Vector(0), startAngle = 90, ccw = 
 class FileLoadIcon extends HideShow {
   constructor(el = "file-load-icon"){
     super(el)
-    this.innerHTML = Icons["file-mask"];
+    this.innerHTML = Icons["share"];
     this.svg = new SvgPlus(this.firstChild);
     this.styles = {display: null};
     this.path = this.svg.createChild("path", {class: "i-fill", mask: "url(#myMask)"})

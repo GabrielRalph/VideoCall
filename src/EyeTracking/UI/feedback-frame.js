@@ -36,6 +36,19 @@ export class FeedbackFrame extends HideShow{
   }
 
 
+  renderTransfromVector(features) {
+    let svg = this.svgCanvas.svg;
+    let {offset, direction} = features.transform;
+    let p2 = offset.v3d.sub(direction.mul(50));
+    svg.createChild("path", {
+      stroke: "black",
+      "stroke-width": 3,
+      d: `M${offset}L${p2.x},${p2.y}`
+    })
+    
+  }
+
+
   renderFeatures(features, canvas) {
     if (!canvas) {
       canvas = new SvgPlus("canvas");
@@ -45,6 +58,10 @@ export class FeedbackFrame extends HideShow{
     this.svgCanvas.updateCanvas(canvas);
 
     let svg = this.svgCanvas.svg;
+
+    try {
+    //  this.renderTransfromVector(features);
+    } catch (e){}
     for (let key of ["left", "right"]) {
       if (features[key].box.topLeft) {
         let {topLeft, topRight, bottomRight, bottomLeft, warning} = features[key].box;
@@ -63,7 +80,6 @@ export class FeedbackFrame extends HideShow{
    * @param {any} stream
    */
   set videoStream(stream) {
-    console.log(stream);
     this.svgCanvas.video.srcObject = stream;
   }
 }

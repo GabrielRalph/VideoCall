@@ -4,12 +4,13 @@
 :root {
     --widget-size: 15vh;
     --widget-aspect: 4;
-    
-    --h: var(--widget-size);
-    --wi: calc(var(--widget-size) / var(--widget-aspect));
-    
+    --wi: calc(15vh / 4);
+  
     --br: 8px;
     --sp: 2px;
+
+    --side-width: 15vw;
+    --side-offset: 0px;
     
     
     --ic1: #cac9c4;
@@ -24,14 +25,50 @@
     
     --bro: calc(var(--br) + var(--sp));
     --fd1: column;
-    
-    font-family: 'Poppins', sans-serif;
     font-size: calc(var(--widget-size) / 6);
+    font-family: 'Poppins', sans-serif;
+   
+}
+
+
+
+body {
+    cursor: var(--cursor);
+    overflow: hidden;
+}
+
+
+session-frame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    --side-window-size: 35vh;
+    --side-window-percent: 0;
+}
+
+session-view {
+    --split-widget-side: 20vh;
+    --split-widget-top: 15vh;
+    display: block;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: calc(var(--side-window-size) * var(--side-window-percent));
+    bottom: 0px;
+}
+
+session-view .rel {
+    justify-content: center;
+    align-items: center;
 }
 
 /* Video Call Widget Style  */
 video-call-widget {
-
+    --h: var(--widget-size);
+    --wi: calc(var(--widget-size) / var(--widget-aspect));
+    
     position: absolute;
     top: 10px;
     left: 50%;
@@ -55,11 +92,11 @@ video-call-widget[landscape] {
     width: 100%;
     height: 100%;
     position: relative;
-}
-video-call-widget .rel {
-    position: relative;
-    height: 100%;
     display: flex;
+
+}
+
+video-call-widget .rel {
     overflow: hidden;
 }
 
@@ -73,30 +110,89 @@ video-call-widget .main-content {
 
 /*  */
 
-.side-window {
+side-window {
     padding: 0.5em;
     background: var(--tbc);
     display: flex;
     flex-direction: column;
     font-size: 0.7em;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: calc(var(--side-window-size) - 1em);
+    transform: translateX(calc(100% * ( 1 - var(--side-window-percent))));
 
 }
 
-.side-window > * {
+side-window > * {
     display: flex;
     flex-direction: column;
 }
 
 /* one item */
-.side-window > *:first-child:nth-last-child(1) {
+side-window > *:first-child:nth-last-child(1) {
     height: 100%;
 }
     
 /* two items */
-.side-window > *:first-child:nth-last-child(2),
-.side-window > *:first-child:nth-last-child(2) ~ * {
+side-window > *:first-child:nth-last-child(2),
+side-window > *:first-child:nth-last-child(2) ~ * {
     height: 50%;
 }
+
+apps-panel .main-items {
+   
+    padding: 3%;
+    padding-top: 8%;
+}
+
+/* .icon-container {
+    position: relative;
+    width: 100%;
+}
+.icon-sizer {
+    margin: 100%;
+} */
+apps-panel .icons-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5em;
+
+}
+.icon-wrapper {
+    aspect-ratio: 1;
+    border: 3px solid var(--wc);
+    border-radius: 0.5em;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.app-icon {
+    position: relative;
+    display: flex;
+    align-items: center;    
+    justify-content: flex-start;
+    flex-direction: column;
+    height: auto;
+    cursor: pointer;
+}
+.icon-name {
+    text-transform: capitalize;
+    text-align: center;
+}
+apps-panel .app-icon:nth-of-type(3n+1) {
+    grid-column: 1;
+    
+}
+apps-panel .app-icon:nth-of-type(3n+2) {
+    grid-column: 2;
+    
+}
+
+
 
 
 popup-info {
@@ -135,10 +231,11 @@ settings-panel > .main-items * {
     color: white;
 }
 
-settings-panel .main-items > * *:first-child {
+settings-panel .device *:first-child {
     font-weight: bold;
     font-size: 1.15em;
 }
+
 
 settings-panel .track-icon {
     display: flex;
@@ -165,6 +262,40 @@ settings-panel .device > *:nth-child(n+3) {
     /* border-top: var(--sp) solid var(--tbc); */
 }
 
+settings-panel .views .icon:hover .i-fill {
+    fill: var(--wc);
+}
+
+settings-panel .views {
+    font-size: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    gap: 0.4em;
+}
+settings-panel .views * {
+    padding: 0;
+}
+settings-panel .views .i-fill {
+    fill: gray;
+}
+
+session-frame:not([user-type=host]) .participant-view {
+    display: none;
+}
+
+session-frame:not([view]) .my-view .views .icon:not([view]) .i-fill,
+session-frame[view=side] .my-view .views .icon[view=side] .i-fill,
+session-frame[view=top] .my-view .views .icon[view=top] .i-fill{
+    fill: var(--wc);
+}
+
+session-frame:not([p-view]) .participant-view .views .icon:not([view]) .i-fill,
+session-frame[p-view=side] .participant-view .views .icon[view=side] .i-fill,
+session-frame[p-view=top] .participant-view .views .icon[view=top] .i-fill{
+    fill: var(--wc);
+}
+
 /* ~~~~ Side Bar Style ~~~~ */
 .side-bar {
     color: white;
@@ -177,6 +308,9 @@ settings-panel .device > *:nth-child(n+3) {
     border-radius: var(--br);
 }
 
+video-call-widget > .rel {
+    display: inherit;
+}
 video-call-widget[show-icons] .side-bar,
 video-call-widget[small] .side-bar {
     width: var(--wi);
@@ -292,8 +426,12 @@ file-load-icon {
     display: block;
     /* padding: var(--sp); */
 }
+file-load-icon .i-fill {
+    fill: #d4abfc;
+    --ic2: #ebd7ff;
+}
 
-* > svg > mask .i-fill.mask-bf,  {fill:white;}
+* > svg > mask .i-fill.mask-bg,  {fill:white;}
 
 * > svg > mask .i-fill.mask-rm {fill:black;}
 
@@ -310,11 +448,10 @@ video-call-widget video-display{
 
 video-display video {
     width: 100%;
-}
-
-video-call-widget video {
     border-radius: var(--br);
 }
+
+
 
 *[type = "participant"] video-display[type = "remote"] svg {
     opacity: 0.5;
@@ -325,6 +462,10 @@ video-call-widget video {
 }
 
 /* Video Display Icon Slot Style */
+video-display .aspect {
+    /* width: 100%;
+    padding-bottom: calc(100% / var(--aspect)); */
+}
 video-display .icon-slot {
     background: #252222cc;
     border-radius: calc(var(--br) - var(--sp));
@@ -350,19 +491,25 @@ video-display .icon-slot svg {
 
 
 /* Video call screen */
-
 video-call-screen {
     display: flex;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     background: var(--wc);
     padding: var(--br);
     gap: var(--br);
     align-items: center;
     justify-content: center;
+}
+video-call-screen.default-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+}
+video-call-screen[orientation=landscape] video-display {
+    height: 100%;
+    width: auto;
 }
 video-call-screen video-display {
     width: 100%;
@@ -387,8 +534,50 @@ tool-bar {
     --hsr: 1;
     font-size:1em;
     margin: var(--br);
+    z-index: 1200;
   }
 
+  tool-bar .tool-bar-list {
+    position: absolute;
+    border: var(--sp) solid var(--tbc);
+    width: calc(var(--tool-bar-height) - var(--sp));
+    background: var(--wc);
+    border-radius: var(--br) var(--br) 0 0;
+
+    bottom: calc(var(--tool-bar-height) + -1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+    border-bottom: none;
+    display: none;
+    flex-direction: column;
+  }
+
+  tool-bar .tool-bar-list[pos=right]::after {
+    content: " ";
+    position: absolute;
+    bottom: 0;
+    width: calc(var(--tool-bar-height) - var(--sp));
+    height: 10px;
+    border-right:  var(--sp) solid var(--tbc);
+    transform: translate(0, 100%);
+    background: var(--wc);
+  }
+  tool-bar .tool-bar-list[pos=left]::after {
+    content: " ";
+    position: absolute;
+    bottom: 0;
+    width: calc(var(--tool-bar-height) - var(--sp));
+    height: 10px;
+    border-left:  var(--sp) solid var(--tbc);
+    transform: translate(0, 100%);
+    background: var(--wc);
+  }
+
+  tool-bar .tool-bar-list[shown] {
+    display: flex;
+  }
+  
+  tool-bar .tool-bar-list .tbs {
+    height: var(--tool-bar-height);
+  }
   tool-bar[top] {
     top: calc(-1 * var(--hsr) * (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
     bottom: auto;
@@ -473,16 +662,17 @@ pdf-viewer {
     left: 0;
     right: 0;
     bottom: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
     --scale: 1;
     --offset-x: 0%;
     --offset-y: 0%;
   }
 
 
-
+  pdf-viewer video {
+    max-width: 100%;
+    max-height: 100%;
+    transform: scale(var(--scale)) translate(var(--offset-x), var(--offset-y));
+  }
 
   pdf-viewer canvas {
     max-width: 100%;
@@ -494,8 +684,8 @@ pdf-viewer {
     max-width: 100%;
     max-height: 100%;
     pointer-events: none;
+    user-select: none;
     transform: scale(var(--scale)) translate(var(--offset-x), var(--offset-y));
-
   }
 
   .mouse-icons > div:nth-child(2+n) {
@@ -518,19 +708,138 @@ pdf-viewer {
 
 
 
+    .split-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+    .split-widget {
+        display: none;
 
+    }
 
-body {
-    cursor: var(--cursor);
-    overflow: hidden;
-}
+    [view=side] .split-widget,
+    [view=top] .split-widget {
+        display: flex;
+        position: absolute;
+        gap: var(--sp);
+        padding: var(--sp);
+    }
+    [view=side] video-call-widget,
+    [view=top] video-call-widget {
+        display: none;
+    }
 
+    [view=side] .split-widget {
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: calc(var(--split-widget-side) - 2 * var(--sp) - var(--br) + var(--side-offset));
+        flex-direction: column;
+        padding-left: calc(var(--sp) + var(--br));
+    }
+    [view=side] .split-content {
+        right: calc(var(--split-widget-side) + var(--side-offset));
+    }
+    [view=side] .split-widget .pull-tab{
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100%;
+        width: calc(var(--sp) + var(--br));
+        z-index: 1000;
+        cursor: ew-resize;
+        user-select: none;
+    }
+    [view=side]  .pull-tab::after {
+        content: " ";
+        position: absolute;
+        top: 50%;
+        left: calc((var(--sp) + var(--br)) / 2);
+        transform: translate(-50%, -50%);
+        background: #fff9;
+        border-radius: var(--br);
+        height: 3em;
+        width: calc(var(--br) - 2.5 * var(--sp))
+    }
 
-session-frame {
-    /* position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    display: flex; */
-}
+    [view=top] .split-widget {
+        top: 0;
+        left: 0;
+        right: 0;
+        height: calc(var(--split-widget-top) - 2 * var(--sp));
+    }
+    [view=top] .split-content {
+        top: calc(var(--split-widget-top));
+    }
+    [view=top] .split-widget video-display{
+        height: 100%;
+        width: auto;
+    }
+    
+
+    [user-type=participant] .content-view,
+    [user-type=participant] .content-view[orientation=portrait] {
+        --content-width: var(--parent-width);
+        --content-height: var(--parent-height);
+    }
+
+    .content-view {
+        display: flex;
+        background: white;
+        --content-height: var(--parent-height);
+        --content-width: calc(var(--parent-height) * var(--aspect));
+        --widget-size: calc(0.15 * var(--content-height));
+        font-size: calc(var(--widget-size) / 6);
+        height: var(--content-height);
+        width: var(--content-width);
+        position: relative;
+    }
+
+    
+    
+    .content-view[orientation=portrait] {
+        --content-width: var(--parent-width);
+        --content-height: calc(var(--parent-width) / var(--aspect));
+    }
+    
+    
+    .overlay {
+        position: absolute;
+        /* background: #3a3737b4; */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    .overlay.top {
+        height: 100vh;
+        width: var(--content-width);
+        top: 0;
+        left: 0;
+        transform: translateY(-100%);
+    }
+    .overlay.bottom {
+        height: 100vh;
+        width: var(--content-width);
+        bottom: 0;
+        left: 0;
+        transform: translateY(100%);
+    }
+    .overlay.left {
+        height: var(--content-height);
+        width: 100vw;
+        top: 0;
+        left: 0;
+        transform: translateX(-100%);
+    }
+    
+    .overlay.right {
+        height: var(--content-height);
+        width: 100vw;
+        top: 0;
+        right: 0;
+        transform: translateX(100%);
+    }
+    

@@ -1,7 +1,7 @@
-import { HideShow, Vector } from "../Utilities/basic-ui.js"
+import { ConstantAspectRatio, HideShow, Vector } from "../Utilities/basic-ui.js"
 import { Icons } from "../Utilities/icons.js"
 import { CopyIcon } from "../Utilities/animation-icons.js"
-import { elementAtCursor, getCursorPosition } from "../Utilities/usefull-funcs.js"
+import { elementAtCursor, getCursorPosition, delay } from "../Utilities/usefull-funcs.js"
 import { endSession, muteTrack, addStateListener, getKey, makeKeyLink } from "./webrtc.js"
 
 function check_snap(p0, p1, size) {
@@ -15,7 +15,6 @@ function check_snap(p0, p1, size) {
             minv = v;
         }
     }
-    console.log(minv);
     if (mind < minv.dist(p0) && mind < 20) {
         return minv;
     } else {
@@ -30,7 +29,14 @@ class VideoDisplay extends HideShow {
         this.styles = {
             position: "relative",
         }
-        this.video = this.createChild("video", { autoplay: true, playsinline: true });
+        this.block = this.createChild("svg", {class: "aspect"})
+        this.video = this.createChild("video", { autoplay: true, playsinline: true, styles: {
+            position: "absolute",
+            top: 0, 
+            left: 0,
+            bottom: 0,
+            right: 0,
+        } });
         this.buttons = this.createChild("div", {
             styles: {
                 position: "absolute",
@@ -100,6 +106,8 @@ class VideoDisplay extends HideShow {
         }
     }
 
+    
+
     update(type) {
         muteTrack(type, this.type);
     }
@@ -123,7 +131,6 @@ class VideoDisplay extends HideShow {
     }
 
     set photo(src){
-        console.log("here");
         // this.video.styles = {"background": `red`}
     }
 
@@ -135,19 +142,29 @@ class VideoDisplay extends HideShow {
         return this.getAttribute("type")
     }
 
+    get aspect(){
+        return this._aspect;
+    }
+
     set srcObject(src) {
         // check for video aspect ratio until it is defined
         let next = () => {
-            let settings = src.getVideoTracks()[0].getSettings();
-            let ratio = settings.width / settings.height;
-            if (Number.isNaN(ratio)) {
-                ratio = 0;
-                window.requestAnimationFrame(next);
-            } else {
-                this.shown = true;
-            }
-            this.styles = {
-                "--aspect": ratio,
+            try {
+                let settings = src.getVideoTracks()[0].getSettings();
+                let ratio = settings.width / settings.height;
+                if (Number.isNaN(ratio)) {
+                    ratio = 0;
+                    window.requestAnimationFrame(next);
+                } else {
+                    this.shown = true;
+                }
+                this.styles = {
+                    "--aspect": ratio,
+                }
+                this.block.props = {viewBox: `0 0 ${100 * ratio} ${100}`}
+                this._aspect = ratio;
+            } catch (e) {
+
             }
         }
 
@@ -169,7 +186,6 @@ class VideoDisplay extends HideShow {
     set state(obj) {
         if (typeof obj === "object" && obj !== null && typeof this.type === "string" && this.type in obj){
             let sub = obj[this.type];
-            console.log(sub);
             if ("audio_muted" in sub) this.audio_muted = sub.audio_muted;
             if ("video_muted" in sub) this.video_muted = sub.video_muted;
             if ("stream" in sub) this.srcObject = sub.stream;
@@ -348,7 +364,6 @@ class DragCollapseWidget extends HideShow {
 
         let { innerWidth, innerHeight } = window;
         let size = this.screenSize;
-        console.log(size);
         if (v.x < 0) v.x = -1 * v.x * size.x;
         if (v.y < 0) v.y = -1 * v.y * size.y;
 
@@ -398,7 +413,6 @@ class DragCollapseWidget extends HideShow {
 
         // let { innerWidth, innerHeight } = window;
         let size = this.screenSize;
-        console.log(size);
 
         delta = new Vector(delta);
         let bs = this.bbox[1];
@@ -409,7 +423,7 @@ class DragCollapseWidget extends HideShow {
         let deltaAd = delta.div(denom);
 
         let newPos = this._pos.add(deltaAd);
-        console.log(newPos, p0);
+
         if (newPos.x < 1) newPos.x = 1;
         if (newPos.y < 1) newPos.y = 1;
         this.position = check_snap(p0, newPos, size);
@@ -417,7 +431,7 @@ class DragCollapseWidget extends HideShow {
 
 }
 
-export class VideoCallScreen extends HideShow {
+export class VideoCallScreen extends ConstantAspectRatio {
     constructor(el = "video-call-screen"){
         super(el);
         this.v1 = this.createChild(VideoDisplay);
@@ -429,6 +443,20 @@ export class VideoCallScreen extends HideShow {
 
 
         addStateListener(this);
+    }
+
+    getAspectRatio(){
+        let [pos1, size1] = this.v1.bbox;
+        let [pos2, size2] = this.v2.bbox;
+        let ratio = (size1.norm() > 1 ? this.v1.aspect : 0) + (size2.norm() > 1 ? this.v2.aspect : 0)
+        return ratio;
+    }
+
+    getParentSize(){
+        let gap = parseFloat(window.getComputedStyle(this).gap);
+        let size = this.bbox[1];
+        size = size.sub(2 * gap);
+        return size;
     }
 
     set state(obj) {

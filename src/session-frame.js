@@ -1,6 +1,6 @@
 import {SvgPlus, Vector} from "./SvgPlus/4.js"
 import {WaveyCircleLoader, CopyIcon, FileLoadIcon} from "./Utilities/animation-icons.js"
-import {FloatingBox, HideShow, SvgResize, POINTERS} from "./Utilities/basic-ui.js"
+import {FloatingBox, HideShow, ConstantAspectRatio, SvgResize, POINTERS} from "./Utilities/basic-ui.js"
 import {parallel, getCursorPosition, delay} from "./Utilities/usefull-funcs.js"
 import {VideoCallScreen, VideoCallWidget} from "./WebRTC/video-call-widget.js"
 import * as WebRTC from "./WebRTC/webrtc.js"
@@ -9,7 +9,12 @@ import * as EyeGaze from "./EyeTracking/Algorithm/EyeGaze.js"
 import {CalibrationFrame} from "./EyeTracking/UI/calibration-frame.js"
 import {FeedbackFrame} from "./EyeTracking/UI/feedback-frame.js"
 import {PdfViewer} from "./PDF/pdf-viewer.js"
+import {getApps, SquidlyApp} from "./Apps/app-library.js"
 const Webcam = EyeGaze.Webcam;
+
+const Apps = getApps();
+
+console.log(Apps);
 
 
 function getQueryKey(string = window.location.search) {
@@ -41,6 +46,10 @@ async function waitClick(elem){
 class ToolBar extends SvgPlus {
   constructor(el = "tool-bar"){
     super(el);
+
+    this.list = this.createChild("div", {class: "tool-bar-list"})
+
+
     this.range = 100;
     this.copy_icon = this.createChild(CopyIcon);
     this.copy_icon.class = "tbs"
@@ -54,7 +63,8 @@ class ToolBar extends SvgPlus {
       this.keyanim = false;
     }
 
-    this.settings = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["settings"]});
+    
+
 
     this.imute = this.createChild("div", {class: "icon tbs", type: "audio", content: Icons["mute"]});
     this.imute.onclick = () => WebRTC.muteTrack("audio", "local");
@@ -62,30 +72,47 @@ class ToolBar extends SvgPlus {
     this.ivideo = this.createChild("div", {class: "icon tbs", type: "video", content: Icons["video"]});
     this.ivideo.onclick = () => WebRTC.muteTrack("video", "local");
 
+    
+    
     this.calibrate = this.createChild("div", {class: "icon tbs", type: "calibrate", content: Icons["calibrate"]});
-
+    
     this.bubbleHidden = false;
     this.viewBubble = this.createChild("div", {class: "icon tbs", type: "view-bubble", content: Icons["eye"]});
     this.viewBubble.onclick = () => {
       WebRTC.setSessionFieldState("bubbleState", this.bubbleHidden == true ? null : 'hidden');
     }
     
-    this.apps = this.createChild("div", {class: "icon tbs", type: "apps", content: Icons["apps"]});
+ 
 
 
-    let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
-    i4.onclick = () => WebRTC.endSession();
+    this.share = this.createChild("div", {class: "tbs icon", type: "file"});
+    
+    this.file = new SvgPlus("div");
+    this.file.props = {class: "tbs icon", type: "file", content: Icons["file"]}
+    
+    this.screenShare = new SvgPlus("div")
+    console.log(Icons.screen);
+    this.screenShare.props = {class: "icon tbs", type: "settings", content: Icons.screen};
 
+    this.share.onclick = () => this.showListAt(this.share, [this.file, this.screenShare], "");
 
-
-    this.file = this.createChild("div", {class: "tbs icon", type: "file"});
-    let fl = this.file.createChild(FileLoadIcon);
+    let fl = this.share.createChild(FileLoadIcon);
     fl.shown = true;
     fl.progress = 1;
     fl.props = {class: "icon"};
     this.fileProgress = fl;
 
+    this.more = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["more"]});
+    this.apps = this.createChild("div", {class: "icon tbs", type: "apps", content: Icons["apps"]});
+    this.apps.remove();
+    this.settings = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["settings"]});
+    this.settings.remove();
+    this.more.onclick = () => this.showListAt(this.more, [this.apps, this.settings], "");
 
+
+    let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
+    i4.onclick = () => WebRTC.endSession();
+    
 
     let pdf = this.createChild("div", {class: "group", styles: {display: "none"}});
     this.deletePdf = pdf.createChild("div", {class: "icon tbs", content:Icons["trash"]})
@@ -99,6 +126,7 @@ class ToolBar extends SvgPlus {
     this.deleteImage = image.createChild("div", {class: "icon tbs", content:Icons["trash"]})
     this.imageGroup = image;
 
+  
     let timeout;
     let tf = () => {
       if ((!this.isMouseOver || !this.active) && !this.keyanim) {
@@ -119,6 +147,19 @@ class ToolBar extends SvgPlus {
     WebRTC.addStateListener(this);
   }
 
+  showListAt(icon, list, style = "middle") {
+    console.log(list);
+    this.list.innerHTML = "";
+    let pos = icon.bbox[0];
+    let pos0 = icon.offsetParent.getBoundingClientRect().x
+    for (let child of list) 
+      this.list.appendChild(child);
+    this.list.setAttribute("pos", style)
+    this.list.styles = {left: `calc(${pos.x - pos0}px - var(--sp))`}
+    this.list.toggleAttribute("shown", true);
+
+  }
+
   updatePDFControls(pdf) {
     this.imageGroup.styles = {display: "none"};
     this.pdfGroup.styles = {display: "none"};
@@ -131,7 +172,7 @@ class ToolBar extends SvgPlus {
       this.left.styles = {opacity: left ? 1 : 0.5, "pointer-events": left ? "all" : "none"};
       this.right.styles = {opacity: right ? 1 : 0.5, "pointer-events": right ? "all" : "none"};
       this.pdfGroup.styles = {display: null};
-    } else if (pdf.displayType == "image") {
+    } else if (pdf.displayType == "image" || pdf.displayType == "stream") {
       this.imageGroup.styles = {display: null};
     }
   }
@@ -166,8 +207,9 @@ class ToolBar extends SvgPlus {
 
   get isMouseOver(){
     let e = getCursorPosition();
-    if (this.top) return e.y < this.range;
-    else return e.y > window.innerHeight - this.range;
+    let list = this.list.bbox[1].y
+    if (this.top) return e.y < (this.range + list);
+    else return e.y > (window.innerHeight - this.range - list)
   }
 
   set top(value){
@@ -183,6 +225,7 @@ class ToolBar extends SvgPlus {
   async show(toshow = true) {
     if (toshow != this.shown && this.showing == null) {
       this.shown = toshow;
+      if (!toshow) this.list.toggleAttribute("shown", false);
       this.showing = this.waveTransition((t) => {
         this.styles = {
           "--hsr": t
@@ -271,7 +314,7 @@ class MouseSelection extends SvgPlus {
 
     this.type = '01';
     this.class = "mouse-icons"
-    this.createChild("div", {content: "Select Cursor Icon"})
+    this.createChild("b", {content: "Select Cursor Icon"})
     this.r1 = this.createChild("div");
     this.r2 = this.createChild("div");
     this.update2();
@@ -324,13 +367,37 @@ class AppsPanel extends SvgPlus{
     super("apps-panel");
     let title = this.createChild("div", {class: "title"});
     title.createChild("div", {content: "Apps"});
+    this.title = "";
     let close = title.createChild("div", {class: "icon", content: Icons["close"]});
     this.close = close;
 
     this.main = this.createChild("div", {class: "main-items"});
     this.main.innerHTML = "Coming Soon"
-    
-   
+  }
+
+  renderApps() {
+    this.main.innerHTML = "";
+    let icons = this.main.createChild("div", {class: "icons-container"})
+    for (let appName in Apps) {
+      let appIcon = icons.createChild("div", {class: "app-icon"});
+      // let container = appIcon.createChild("div", {class: "icon-container"});
+      // container.createChild("div", {class: "icon-sizer"})
+      let wrapper = appIcon.createChild("div", {class: "icon-wrapper"})
+      wrapper.appendChild(Apps[appName].appIcon);
+      appIcon.createChild("div", {class: "icon-name", content: Apps[appName].name})
+      appIcon.onclick = () => {
+        const event = new CustomEvent("app-selection", {bubbles: true});
+        event.appName = appName;
+        this.dispatchEvent(event);
+      }
+    }
+  }
+
+  set app(app) {
+    if (app.sideWindow != null) {
+      this.main.innerHTML = "";
+      this.main.appendChild(app.sideWindow);
+    }
   }
 }
 
@@ -344,8 +411,27 @@ class SettingsPanel extends SvgPlus{
     this.close = close;
 
     this.main = this.createChild("div", {class: "main-items"});
+
+    let sessionFrame = () => document.querySelector("session-frame");
+    let viewControls = this.main.createChild("div");
+    let my = viewControls.createChild("div", {class: "my-view"});
+    my.createChild("b", {content: "My View"});
+    this.views = my.createChild("div", {class: "views"});
+    this.views.createChild("div", {class: "icon", content: Icons["v-widget"]}).onclick = () => sessionFrame().setView(null);
+    this.views.createChild("div", {class: "icon", content: Icons["v-top"], view: "top"}).onclick = () => sessionFrame().setView("top");
+    this.views.createChild("div", {class: "icon", content: Icons["v-side"], view: "side"}).onclick = () => sessionFrame().setView("side");
+    
+    let pv = viewControls.createChild("div", {class: "participant-view"});
+    pv.createChild("b", {content: "Participants View"});
+    let v2 = pv.createChild("div", {class: "views"});
+    v2.createChild("div", {class: "icon", content: Icons["v-widget"]}).onclick = () => sessionFrame().setView(null, true);
+    v2.createChild("div", {class: "icon", content: Icons["v-top"], view: "top"}).onclick = () => sessionFrame().setView("top", true);
+    v2.createChild("div", {class: "icon", content: Icons["v-side"], view: "side"}).onclick = () => sessionFrame().setView("side", true);
+    
     this.mouseSelection = this.main.createChild(MouseSelection);
     this.devicesList = this.main.createChild("div", {class: "device"});
+
+    
   }
 
   
@@ -390,46 +476,46 @@ class SettingsPanel extends SvgPlus{
 
 }
 
-class SessionFrame extends SvgPlus {
-  async onconnect(){
-    this.lambda = 0.6;
-    this.frameContent = this.innerHTML;
-    this.innerHTML = "";
+class SessionView extends HideShow {
+  constructor(){
+    super("session-view")
+    let rel = this.createChild("div", {class: "rel"});
 
-    let main = this.createChild("div", {styles: {position: "absolute", top: "0px", left: "0px", right: "0%", bottom: "0px"}});
-    let rel = main.createChild("div", {class: "rel"});
-    let side_window = this.createChild("div", {class: "side-window", styles: {position: "absolute", top: "0px", left: "70%", right: "0px", bottom: "0px", transform: "translateX(100%)"}})
-    this.main_window = main;
-    this.side_window = side_window;
 
-    this.session_content = rel.createChild("div", {name: "content"});
-    this.pdf = this.session_content.createChild(PdfViewer);
+    /* Content View  */
+    let splitContent = rel.createChild("div", {class: "split-content"});
+    let rel2 = splitContent.createChild("div", {class: "rel"});
+    let contentView = new ConstantAspectRatio("div");
+    contentView.aspectRatio = 1.2;
+    contentView.class = "content-view"
+    contentView.watchAspectRatio();
+    rel2.appendChild(contentView);
+    this.content_view = contentView;
+    let mainContentView = contentView.createChild("div");
+    this.pdf = mainContentView.createChild(PdfViewer);
+    this.widget = rel.createChild(VideoCallWidget);
+    this.widget.shown = true;
+    this.feedback_window = mainContentView.createChild(FeedbackWindow);
+    this.feedback_window.align = "center";
+    this.main_app_window = mainContentView.createChild("div", {class: "main-app-window"});
 
-  
-    this.web_rtc = rel.createChild("div", {name: "webrtc"});
-    this.video_widget = this.web_rtc.createChild(VideoCallWidget);
-    this.video_call_screen = this.web_rtc.createChild(VideoCallScreen);
-    this.tool_bar = this.web_rtc.createChild(ToolBar);
-    this.video_widget.addEventListener("move", () => {
-      let ypos = -1 * this.video_widget.relativePosition.y;
-      this.tool_bar.top = ypos > 0.5;
-      
-    });
-    this.fileProgress = this.tool_bar.fileProgress;
-    this.popup_info = new FloatingBox("popup-info");
-    this.popup_info.align = new Vector(0.5, 0.2);
-    this.web_rtc.appendChild(this.popup_info);
+    contentView.createChild("div", {class: "overlay top"})
+    contentView.createChild("div", {class: "overlay bottom"})
+    contentView.createChild("div", {class: "overlay left"})
+    contentView.createChild("div", {class: "overlay right"})
 
-    
-    this.apps_panel = new AppsPanel();
-    this.apps_panel.close.onclick = () =>  this.hideInSideWindow("apps");
-    this.settings_panel = new SettingsPanel();
-    this.settings_panel.close.onclick = () => this.hideInSideWindow("settings");
-    this.side_window_items = {
-      settings: this.settings_panel,
-      apps: this.apps_panel
-    }
 
+    let splitWidget = rel.createChild(VideoCallScreen);
+    splitWidget.shown = true;
+    splitWidget.class = "split-widget"
+    let pullTab = splitWidget.createChild("div", {class: "pull-tab"})
+
+   
+    /* Default View */
+    let defaultView = rel.createChild(VideoCallScreen);
+    defaultView.class = "default-view"
+    defaultView.watchAspectRatio();
+    this.default_view = defaultView;
 
     let pointers = rel.createChild(SvgResize);
     pointers.styles = {
@@ -453,14 +539,173 @@ class SessionFrame extends SvgPlus {
     this.blob.shown = true;
     this.pointers = pointers;
 
-    this.calibration_content = rel.createChild("div");
-    this.calibration_frame = this.calibration_content.createChild(CalibrationFrame);
-    this.feedback_window = this.calibration_content.createChild(FeedbackWindow);
-    this.feedback_window.align = "center"
+    this.tool_bar = rel.createChild(ToolBar);
+
+
+
+    let offset = 0;
+    let sidePull = false;
+    window.addEventListener("mousemove", (e) => {
+      let [pos, size] = pullTab.bbox;
+      let {x, y} = e;
+      if (x > pos.x - size.x/2 && x < pos.x + 2*size.x && y > pos.y && y < pos.y + size.y) {
+        if (e.buttons == 1) {
+          sidePull = true;
+        }
+      }
+
+
+
+      if (sidePull == true){
+        let st = window.getComputedStyle(splitWidget);
+
+        let gap = parseFloat(st["gap"]);
+
+
+        let size = splitWidget.bbox[1];
+        let width0 = size.x - offset;
+
+        let maxh = size.y - 3 * gap;
+
+        let v1 = splitWidget.v1.bbox[1];
+        let v2 = splitWidget.v2.bbox[1];
+        let h = v1.y + v2.y;
+        let w = v1.x;
+
+        let maxoffset = maxh * w/h - width0 + 3 * gap;
+        offset -= e.movementX
+        
+       
+        if (offset < 0) offset = 0;
+        if (offset > maxoffset) offset = maxoffset;
+        this.styles = {"--side-offset": offset + "px"}
+      }
+    })
+
+    window.addEventListener("mouseup", () => {
+      sidePull = false
+
+    });
+
+    window.addEventListener("mouseleave", () => {
+      sidePull = false
+
+    });
+
+    this.widget.addEventListener("move", () => {
+      let ypos = -1 * this.widget.relativePosition.y;
+      this.tool_bar.top = this.widget.offsetParent != null && ypos > 0.5;
+      
+    });
+  }
+
+  async toContentView(bool = true){
+    if (this.contentShown != bool) {
+      this._contentShown = bool;
+      this.toggleAttribute("content", bool)
+      if (bool) {
+        await parallel(this.default_view.hide(), this.content_view.show());
+      } else {
+        await parallel(this.default_view.show(), this.cursors.hide(), this.content_view.hide());
+      }
+    }
+  }
+  get contentShown(){return this._contentShown;}
+  set contentShown(bool){
+    this.toContentView(bool);
+  }
+
+}
+
+/*
+<session-frame>
+  <main>
+    <rel>
+    
+    </rel>
+  </main>
+
+  <side-window>
+  </side-window>
+</session-frame>
+*/
+
+
+class SessionFrame extends SvgPlus {
+  async onconnect(){
+    this.lambda = 0.6;
+    this.frameContent = this.innerHTML;
+    this.innerHTML = "";
+    let rel = this.createChild("div", {class: "rel"})
+    let session_view = rel.createChild(SessionView);
+    this.side_window = rel.createChild("side-window");
+
+    this.session_view = session_view;
+    this.tool_bar = session_view.tool_bar;
+    this.pdf = session_view.pdf;
+    this.feedback_window = session_view.feedback_window;
+    this.pointers = session_view.pointers;
+    this.blob = session_view.blob;
+    this.grid = session_view.grid;
+    this.cursor = session_view.cursor;
+    this.cursors = session_view.cursors;
+    this.default_view = session_view.default_view;
+    this.content_view = session_view.content_view;
+    this.main_app_window = session_view.main_app_window;
+
+    this.content_view.addEventListener("aspect-ratio", (e) => {
+      if (this.type === "participant")
+        WebRTC.setSessionFieldState("aspectRatio", e.aspectRatio);
+    })
+
+
+    this.addEventListener("app-selection", (e) => {
+      this.openApp(e.appName)
+    })
+
+    // this.main_window = main;
+    // this.side_window = side_window;
+
+    // let view = rel.createChild(VideoCallScreen);
+    // view.class = "top-side"
+    // let pullTab = view.createChild("div", {class: "pull-tab", content: "<"})
+    // let main2 = rel.createChild("div", {styles: {"position": "relative", "width": "100%", "height": "100%"}});
+
+    // this.session_content = main2.createChild("div", {name: "content"});
+    // this.pdf = this.session_content.createChild(PdfViewer);
+
+  
+    // this.web_rtc = main2.createChild("div", {name: "webrtc"});
+    // this.video_widget = this.web_rtc.createChild(VideoCallWidget);
+    // this.default_view = this.web_rtc.createChild(VideoCallScreen);
+    // this.default_view.class = "large"
+    // this.default_view.watchAspectRatio();
+    // this.tool_bar = this.web_rtc.createChild(ToolBar);
+    // this.video_widget.addEventListener("move", () => {
+    //   let ypos = -1 * this.video_widget.relativePosition.y;
+    //   this.tool_bar.top = ypos > 0.5;
+      
+    // });
+    this.fileProgress = this.tool_bar.fileProgress;
+    this.popup_info = new FloatingBox("popup-info");
+    this.popup_info.align = new Vector(0.5, 0.2);
+    rel.appendChild(this.popup_info);
+
+    
+    this.apps_panel = new AppsPanel();
+    this.apps_panel.renderApps();
+    this.apps_panel.close.onclick = () =>  this.hideInSideWindow("apps");
+    this.settings_panel = new SettingsPanel();
+    this.settings_panel.close.onclick = () => this.hideInSideWindow("settings");
+    this.side_window_items = {
+      settings: this.settings_panel,
+      apps: this.apps_panel
+    }
+
+    this.calibration_frame = rel.createChild(CalibrationFrame);
     this.feedback_window.continue.onclick = () => this.calibrate();
     this.feedback_window.cancel.onclick = () => this.cancel_calibration();
 
-    
     this.loader = rel.createChild(WaveyCircleLoader);
     this.loader.styles = {width: "30%"};
     this.loader.align = "center";
@@ -471,12 +716,9 @@ class SessionFrame extends SvgPlus {
     this.error_frame.styles = {"font-size": "3em", "text-align": "center"};
     this.appendChild(this.error_frame);
 
-    WebRTC.addDataListener(this);
-    WebRTC.addStateListener(this);
-    Webcam.addProcessListener((e) => this.onEyePosition(e));
-
     this.tool_bar.calibrate.onclick = () => this.start_calibration();
     this.tool_bar.file.onclick = () => this.openFile();
+
     this.tool_bar.left.onclick = () => this.setPage(-1);
     this.tool_bar.right.onclick = () => this.setPage(1);
     this.tool_bar.deletePdf.onclick = () => this.removeFile();
@@ -486,22 +728,26 @@ class SessionFrame extends SvgPlus {
       this.settings_panel.updateDevices();
       this.showInSideWindow("settings")
     }
+    this.tool_bar.screenShare.onclick = () => this.shareScreen();
 
 
     this.mouse_change = false;
     this.mouse_event = null;
     window.addEventListener("mousemove", (e) => {
-      this.mouse_event = e;
-      this.mouse_change = true;
+        this.mouse_event = e;
+        this.mouse_change = true;
     })
     this.updateMouse();
 
 
     this.addEventListener("transform", (e) => {
-      console.log(e.transform);
       WebRTC.setSessionFieldState("contentTransform", e.transform);
     })
 
+
+    WebRTC.addDataListener(this);
+    WebRTC.addStateListener(this);
+    Webcam.addProcessListener((e) => this.onEyePosition(e));
 
     let key = getQueryKey();
     if (key != null) {
@@ -514,6 +760,94 @@ class SessionFrame extends SvgPlus {
     }
   }
 
+  
+
+  _updateApp(info) {
+    if (info != null) {
+      let {name, sender, data} = info
+      if (name in Apps) {
+
+        let appClass = Apps[name];
+        
+        // A different App is open, close it
+        if (!(this.squidlyApp instanceof appClass)) {
+          console.log("remove app");
+          this._removeApp();
+        }
+  
+        // No app is open so open the correct app
+        if (!(this.squidlyApp instanceof SquidlyApp)) {
+            console.log("add app");
+            try {
+              let app = new appClass(sender == this.type);
+              this.squidlyApp = app;
+            
+              this.apps_panel.app = app;
+              let main = app.mainWindow;
+              if (main !== null) {
+                this.main_app_window.appendChild(main);
+              }
+              
+              app.data = data;
+              app.addUpdateListener((data) => {
+                WebRTC.setSessionFieldState("appInfo", {
+                  name: name,
+                  sender: sender,
+                  data: app.data
+                })
+              })
+
+            } catch(e) {
+              console.log(e);
+            }
+
+        // The correct App is open so update its data
+        } else {
+          this.squidlyApp.data = data;
+        }
+      } 
+    } else {
+      this._removeApp();
+    }
+  }
+
+  _removeApp(){
+    this.apps_panel.renderApps();
+    this.main_app_window.innerHTML = "";
+    this.squidlyApp = null;
+  }
+
+
+  openApp(appName){
+    console.log("opening app", appName);
+    WebRTC.setSessionFieldState("appInfo", {
+      name: appName,
+      sender: this.type,
+      data: ""
+    })
+  }
+
+  closeApp() {
+    WebRTC.setSessionFieldState("appInfo", null);
+  }
+
+
+
+
+
+  async shareScreen() {
+    let ss = await WebRTC.shareScreen();
+    if (ss != null) {
+      // this.setFile({type: "stream", url: ss.stream});
+      WebRTC.setSessionFieldState("content", {type: "stream"})
+      this.setFile({type: "stream"})
+      this.pdf.video.srcObject = ss.stream;
+      ss.stream.oninactive = () => {
+        WebRTC.setSessionFieldState(null);
+        this.setFile(null);
+      }
+    }
+  }
 
   async updateMouse(){
     while(true){
@@ -554,11 +888,9 @@ class SessionFrame extends SvgPlus {
   }
 
   async toggleSideWindow(bool = !this._side_open) {
-    let size = 30;
     this._side_open = bool;
     await this.waveTransition((t) => {
-      this.main_window.styles = {right: `${size*t}%`}
-      this.side_window.styles = {transform: `translateX(${100 * (1-t)}%)`}
+      this.styles = {"--side-window-percent": t}
     }, 250, bool);
   }
 
@@ -590,29 +922,14 @@ class SessionFrame extends SvgPlus {
   }
 
 
-  async toWidget(bool = true){
-    if (this.widgetShown != bool) {
-      this._widgetShown = bool;
-      
-      if (bool) {
-        await parallel(this.video_call_screen.hide(), this.video_widget.show());
-      } else {
-        await parallel(this.video_call_screen.show(), this.video_widget.hide(), this.cursors.hide());
-      }
-    }
-  }
-  get widgetShown(){return this._widgetShown;}
-  set widgetShown(bool){
-    this.toWidget(bool);
-  }
 
   onEyePosition(input) {
     let {result} = input;
-    let rel = null;
     let lambda = this.lambda;
 
     if (result) {
       let {x, y} = result;
+      console.log(x,y);
       if (typeof this.ex !== "number") this.ex = x;
       if (typeof this.ey !== "number") this.ey = y;
 
@@ -626,10 +943,16 @@ class SessionFrame extends SvgPlus {
       if (y > 1) y = 1;
       if (y < 0) y = 0;
 
-      let [pos, size] = this.pointers.bbox;
-      rel = (new Vector(x, y)).mul(size).add(pos);
-      this.blob.position = rel;
-      WebRTC.sendData({eye: {x: x, y: y}})
+
+      let [pos, size] = this.bbox;
+      let screen = (new Vector(x, y)).mul(size).add(pos);
+      if (this.squidlyApp instanceof SquidlyApp) {
+        this.squidlyApp.eyeData = screen;
+      }
+      let [pdfPos, pdfSize] = this.pdf.displayBBox;
+      let rel2content = screen.sub(pdfPos).div(pdfSize);
+      this.blob.position = screen.sub(this.pointers.bbox[0]);
+      WebRTC.sendData({eye: {x: rel2content.x, y: rel2content.y}})
     }
 
     WebRTC.sendData({calibrating: this._calibrating})
@@ -640,6 +963,7 @@ class SessionFrame extends SvgPlus {
   }
 
   async openFile(){
+    WebRTC.closeShare();
     let contentFile = await openContent();
     WebRTC.uploadSessionContent(contentFile, (p) => {
       this.fileProgress.progress = p;
@@ -653,6 +977,7 @@ class SessionFrame extends SvgPlus {
   }
 
   removeFile(){
+    WebRTC.closeShare();
     WebRTC.uploadSessionContent(null);
     this.setFile(null);
   }
@@ -662,7 +987,7 @@ class SessionFrame extends SvgPlus {
     if (this.type === "host") {
       this.tool_bar.updatePDFControls(this.pdf);
     }
-    await this.toWidget(this.hasContent)
+    await this.session_view.toContentView(this.hasContent)
   }
 
   setPage(direction, inc = true) {
@@ -725,9 +1050,9 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("eye" in data) {
-        let [pos, size] = this.pointers.bbox;
+        let [pos, size] = this.pdf.displayBBox;
         let rel = (new Vector(data.eye)).mul(size).add(pos);
-        this.blob.position = rel;
+        this.blob.position = rel.sub(this.pointers.bbox[0]);
       }
 
       if ("features" in data) {
@@ -748,13 +1073,17 @@ class SessionFrame extends SvgPlus {
           this.pdf.transformable = true;
         }
         this.type = state.type;
+        this.setAttribute("user-type", state.type)
       }
       if ("status" in state) {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
-        if (state.status != "open") {
-          this.toWidget(this.hasContent);
-        }
+        if (state.status == "open") {
+          if (this.type == "host") WebRTC.refreshShare();
+          if (this.type == "participant") WebRTC.closeShare();
+        } else {
+          this.session_view.toContentView(this.hasContent);
+        } 
       }
       if ("remote" in state && this.type == "host") {
         if ("stream" in state.remote) {
@@ -763,8 +1092,7 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("contentInfo" in state) {
-        console.log("content", state.contentInfo);
-        this.setFile(state.contentInfo)
+        this.setFile(state.contentInfo);
       }
 
       if ("bubbleState" in state) {
@@ -774,14 +1102,47 @@ class SessionFrame extends SvgPlus {
       if ("contentTransform" in state) {
         this.pdf.contentTransform = state.contentTransform;
       }
-      // if ("file" in state) {
-      //   this.fileProgress.progress = state.file.progress;
-      //   if (state.file.progress == 1) {
-      //     // setTimeout(() => this.fileProgress.hide(), 1000);
-      //   } else {
-      //     this.fileProgress.show();
-      //   }
-      // }
+
+      if ("participantView" in state) {
+        if (this.type == "participant") {
+          this._view = [state.participantView, ""]
+        } else {
+          this._view = [state.participantView, "p-"]
+        }
+      }
+
+      if ("aspectRatio" in state) {
+        this.content_view.aspectRatio = parseFloat(state.aspectRatio);
+      }
+
+      if ("screenStream" in state) {
+
+        this.pdf.video.srcObject = state.screenStream;
+   
+      }
+
+      if ("appInfo" in state) {
+        this._updateApp(state.appInfo)
+      }
+
+     
+    }
+  }
+
+
+  set _view(p) {
+    let [view, value] = p;
+    if (view != null && value == "") {
+      this.tool_bar.top = false
+    } 
+    this.setAttribute(value + "view", view);
+    if (view == null) this.removeAttribute(value + "view");
+  }
+  setView(view, user = null) {
+    if (this.type == "participant" || (this.type == "host" && user != null)) {
+      WebRTC.setSessionFieldState("participantView", view)
+    } else {
+      this._view = [view, ""]
     }
   }
 
@@ -789,41 +1150,37 @@ class SessionFrame extends SvgPlus {
     return this.pdf.displayType !== null;
   }
 
-
-
   /**
    * @param {Number} state
    */
   set calibration_state_host(state) {
     if (state != this._c_state) {
-      console.log(state, this._c_state);
       this._c_state = state;
       switch(state) {
         case 0:
-          this.widgetShown = this.hasContent;
-          console.log(this.hasContent);
+          this.session_view.contentShown = this.hasContent;
           this.feedback_window.hide();
           break;
         case 4: // calibrated
-          this.widgetShown = true;
+          this.session_view.contentShown = true;
           this.pointers.show();
           this.feedback_window.hide();
           break;
         case 1: // calibrated and in feedback
-          this.widgetShown = true;
+          this.session_view.contentShown = true;
           this.pointers.hide();
           this.feedback_window.show();
           this.loader.hide();
           break;
         case 2: // not calibrated and calibrating
-          this.widgetShown = false;
+          this.session_view.contentShown = false;
           this.feedback_window.hide();
           this.loader.setText("calibrating")
           this.loader.show();
           break;
         case 3:
           this.calibration_results();
-          this.widgetShown = true;
+          this.session_view.contentShown = true;
           break;
       }
     }
@@ -839,7 +1196,7 @@ class SessionFrame extends SvgPlus {
     } else if (this._calibrating != 1){
       this._calibrating = 1;
       Webcam.startProcessing();
-      await parallel(this.toWidget(), this.pointers.hide());
+      await parallel(this.session_view.toContentView(), this.pointers.hide());
       await this.feedback_window.show();
     }
   }
@@ -851,7 +1208,7 @@ class SessionFrame extends SvgPlus {
       this._calibrating = this._calibrated === true ? 4 : 0;
       await this.feedback_window.hide();
       if (this._calibrated === true) this.pointers.show();
-      await this.toWidget(this.hasContent || this._calibrated === true);
+      await this.session_view.toContentView(this.hasContent || this._calibrated === true);
     }
   }
 
@@ -914,7 +1271,8 @@ class SessionFrame extends SvgPlus {
       // this.videos.setSrc("local", stream);
       try {
         await WebRTC.start(key, stream, forceParticipant);
-        this.video_call_screen.show();
+        this.default_view.show();
+        this.session_view.show();
         this.loader.setText("")
       } catch (e) {
         if (e.waitForHost === true) {

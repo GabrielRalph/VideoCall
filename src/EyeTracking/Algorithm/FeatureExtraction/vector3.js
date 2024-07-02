@@ -76,6 +76,11 @@ class Vector3{
     return this.x*x + this.y*y + this.z*z;
   }
 
+  cross() {
+    let [x, y, z] = PV3(arguments);
+    return new Vector3(this.y * z - this.z * y, this.z * x - this.x * z, this.x * y - this.y * x)
+  }
+
   angleBetween(){
     let b = PV3v(arguments);
     return Math.acos(this.dot(b)/(this.norm() * b.norm()));

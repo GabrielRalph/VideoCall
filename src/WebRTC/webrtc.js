@@ -1,5 +1,6 @@
 import {Firebase, RTCSignaler} from "../Firebase/firebase.js"
 import * as Webcam from "../Utilities/Webcam.js"
+import {WebRTCSS} from "./webrtc-ss.js"
 // import { ChunkReceiveBuffer, ChunkSendBuffer } from "./file-share.js";
 
 let initialised = false;
@@ -8,6 +9,7 @@ let initialised = false;
  */
 let localStream = null;
 let remoteStream = null;
+let screenSharePC = null;
 let sendChannel;
 let receiveChannel;
 let onUpdateHandler = () => {};
@@ -343,8 +345,10 @@ async function onnegotiationneeded(){
 }
 
 function ontrackadded({ track, streams }){
-  rtc_base_log(`track received ${track.kind} [${streams[0].id.split("-")[0]}]`);
+  rtc_base_log(`track received ${remoteContentStatus[track.kind] != null} ${track.kind} [${streams[0].id.split("-")[0]}]`);
+  
   remoteStream = streams[0];
+
   track.onunmute = () => {
     rtc_base_log("track unmuted " + track.kind);
     remoteContentStatus[track.kind] = track;
@@ -374,10 +378,31 @@ function sendMessage(message) {
   }
 }
 
+
+async function ssReceive(data) {
+  if (screenSharePC == null) {
+    screenSharePC = WebRTCSS.watchScreen(getDefaulIceServers(), data);
+    screenSharePC.send = (data) => {
+      sendMessage("S" + JSON.stringify(data))
+    }
+    screenSharePC.onStream = (stream) => {
+      console.log(stream);
+      updateStateListeners({screenStream: stream});
+    }
+  } else {
+    screenSharePC.onSignal(data);
+  }
+}
+
 /* Send message sends a message accros the data channel*/
 function handleReceiveMessage(event) {
   // console.log(event.data, event.data[0]);
   switch (event.data[0]) {
+    case "S":
+      let slice = event.data.slice(1);
+      let data = JSON.parse(slice);
+      ssReceive(data);
+      break;
     // case "F":
     //   loadFileChunk(event.data);
     //   break;
@@ -385,6 +410,7 @@ function handleReceiveMessage(event) {
     //   onFileChunkResponse(event.data);
     //   break;
     default:
+
       updateHandler("data", JSON.parse(event.data));
       break;
   }
@@ -483,7 +509,42 @@ function startMessageChannel(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+export async function shareScreen(){
+ 
+  try {
+    if (screenSharePC instanceof WebRTCSS) {
+        await screenSharePC.replaceStream();
+      } else {
+      screenSharePC = await WebRTCSS.shareScreen(getDefaulIceServers());
+      screenSharePC.send = (data) => {
+        sendMessage("S" + JSON.stringify(data))
+      }
+    }
+    return screenSharePC;
+  } catch (e) {
+    return null
+  }
+}
 
+export function refreshShare(){
+  if (screenSharePC instanceof WebRTCSS) {
+    console.log("refresh");
+    screenSharePC.pc.close();
+    screenSharePC = new WebRTCSS(screenSharePC.config, screenSharePC.stream);
+    screenSharePC.send = (data) => {
+      sendMessage("S" + JSON.stringify(data))
+    }
+  }
+  return screenSharePC;
+}
+
+export function closeShare(){
+  if (screenSharePC instanceof WebRTCSS) {
+    screenSharePC.close();
+    screenSharePC = null;
+    updateStateListeners({screenStream: null})
+  }
+}
 /* load instantiates the WebRTC Peer connection object. Initialise the firebase database if it has not been done
     already and retreive the ice server provider config.
     If the boolean parameter "onlyFirebase" is set true then only the firebase database will be initialised 
@@ -586,20 +647,13 @@ export function addDataListener(callback) {
 }
 
 
-
-// export function sendFile(buffer, filename) {
-//   sendBuffer = new ChunkSendBuffer(buffer, filename, getMaxMessageSize());
-//   if (sessionState == "open") {
-//     sendBuffer.reset(getMaxMessageSize());
-//     sendChunk(0);
-//   }
-// }
-
 // /* Send data across data channel */
 export function sendData(data) {
   let message = {data}
   sendMessage(message);
 }
+
+
 
 /* start call */
 export async function start(key, stream, forceParticipant){

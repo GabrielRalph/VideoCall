@@ -12,7 +12,18 @@ const MINSIZERATIO = 0.9 // If the width of the eye is less than the min size ra
                          // will fail
 
 
+function getFaceTransform(facePoints){
+  let [a, b, c] = facePoints.plane;
 
+  let ab = b.v3d.sub(a.v3d);
+  let ac = c.v3d.sub(a.v3d);
+
+  let n = ab.cross(ac);
+  n = n.div(n.norm());
+
+
+  return {offset: a, direction: n};
+}
 
 /** Extract Eye Features, given the eye points object determines a 3D bounding box
     and extracts pixel information from the provided canvas.
@@ -41,6 +52,7 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
   let height = canvas.height;
   let features = {videoHeight: height, videoWidth: width};
  try {
+  features.transform = getFaceTransform(facePoints);
    for (let key of ["left", "right"]) {
      let eyeBox = {warning: "not detected"};
      let eyePixels = null;
@@ -55,6 +67,7 @@ export function extractEyeFeatures(facePoints, canvas, w = WIDTH, h = HEIGHT) {
        eyePixels = equalizeHistogram(eyePixels, 5);
        eyePixels = im2double(eyePixels);
      }
+
 
      features[key] = {
        box: eyeBox,

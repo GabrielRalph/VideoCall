@@ -18,11 +18,12 @@ for (let name in IconLibrary) {
   
     let h = parseFloat(svg.getAttribute("viewBox").split(" ")[3]);
     svg.style.setProperty("--ws", Math.round(1000*h/DEFAULT_HEIGHT)/1000);
-  
     Icons[name] = svg.outerHTML;
 
   } catch(e) {
     console.log(name, e);
   }
+
 }
+
 export {Icons}
