@@ -80,6 +80,21 @@ export const STATE_FIELDS = [
     field: "contentTransform",
     from: "host",
     messageKey: "contentTransform"
+  },
+  {
+    field: "participantView",
+    from: "both",
+    messageKey: "participantView"
+  },
+  {
+    field: "aspectRatio",
+    from: "participant",
+    messageKey: "aspectRatio"
+  },
+  {
+    field: "appInfo",
+    from: "both",
+    messageKey: "appInfo"
   }
 ]
 
@@ -237,7 +252,6 @@ export async function join(key, onmessage, forceParticipant = false) {
     initialState[key] = (await get(ref(`users/${hostUID}/info/${key}`))).val();
   }
   
-  console.log(initialState);
   addListeners(key, userType);
 
   return {iceServers, initialState};

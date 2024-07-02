@@ -83,6 +83,7 @@ class PdfViewer extends SvgPlus {
     this.innerHTML = "";
     this.image = this.createChild("img");
     this.canvas = this.createChild("canvas", {width: 1000, height: 1000});
+    this.video = this.createChild("video", {playsinline: true, muted: true, autoplay: true});
     let icons = this.createChild("div", {class: "pdf-controls"});
     this.icons = icons;
     this.middle_icon = icons.createChild("div", {class: "bottom-middle"});
@@ -99,21 +100,30 @@ class PdfViewer extends SvgPlus {
     });
 
 
+
+    let selected = false;
+    this.addEventListener("mousedown", (e) => {
+      selected = true;
+    })
+
+
     let last = null;
     this.addEventListener("mousemove",(e) => {
-      if (e.buttons == 1 && this.transformable) {
-        let point = new Vector(e.clientX, e.clientY);
-        if (last == null) last = point;
-        let delta = point.sub(last);
-        let [pos, size] = this.displayBBox;
-        let deltaRel = delta.div(size);
-        this.offset = this.offset.add(deltaRel);
-        last = point;
-        this.transformEvent();
+      if (selected) {
+        if (e.buttons == 1 && this.transformable) {
+          let point = new Vector(e.clientX, e.clientY);
+          if (last == null) last = point;
+          let delta = point.sub(last);
+          let [pos, size] = this.displayBBox;
+          let deltaRel = delta.div(size);
+          this.offset = this.offset.add(deltaRel);
+          last = point;
+          this.transformEvent();
+        }
       }
     })
-    this.addEventListener("mouseup", () => last =null);
-    this.addEventListener("mouseleave", () => last =null);
+    this.addEventListener("mouseup", () => {last =null;selected = false;});
+    this.addEventListener("mouseleave", () => {last =null;selected = false;});
 
     this.addEventListener("dblclick", () => {
       if (this.transformable) {
@@ -210,6 +220,7 @@ class PdfViewer extends SvgPlus {
     this._displayType = type;
     this.canvas.styles = {display: type == "pdf" ? null : "none"};
     this.image.styles = {display: type == "image" ? null : "none"};
+    this.video.styles = {display: type == "stream" ? null : "none"};
   }
 
   get displayType(){
@@ -218,6 +229,7 @@ class PdfViewer extends SvgPlus {
 
   get displayBBox(){
     if (this.displayType == "pdf") return this.canvas.bbox;
+    else if (this.displayType == "stream") return this.video.bbox;
     else return this.image.bbox;
   }
   // async openFile(){
@@ -243,6 +255,8 @@ class PdfViewer extends SvgPlus {
         if (type == "pdf") {
           this._pageNumber = page;
           await this.loadPDF(url);
+        } else if (type == "stream") {
+          this.video.srcObject = url;
         } else {
           this.image.props = {src: url};
           this._url = url;
@@ -301,29 +315,25 @@ class PdfViewer extends SvgPlus {
   // }
 
   async waitForLoad(){
-    console.log('waiting for load', this._wait_for_load);
+    // console.log('waiting for load', this._wait_for_load);
     while (!this._loaded) {
       await delay(50);
     }
     // await this._wait_for_load;
-    console.log('loaded');
+    // console.log('loaded');
   }
 
   async renderPage(){
     let {canvas, pdfDoc, pageNum} = this;
     if (pdfDoc) {
       if (this._render_prom instanceof Promise) {
-        console.log("still waiting");
         await this._render_prom
       }
 
-      let [pos, size] = this.bbox;
-      console.log("b");
-      let maxDimension = Math.max(size.x, size.y) * 3;
+      let maxDimension = Math.max(window.innerWidth, window.innerHeight) * 3;
       this._render_prom = renderPDF(canvas, pdfDoc, pageNum, maxDimension);
       await this._render_prom;
       this._render_prom = null;
-      console.log("e");
     }
   }
 
