@@ -929,7 +929,7 @@ class SessionFrame extends SvgPlus {
 
     if (result) {
       let {x, y} = result;
-      console.log(x,y);
+      // console.log(x,y);
       if (typeof this.ex !== "number") this.ex = x;
       if (typeof this.ey !== "number") this.ey = y;
 
