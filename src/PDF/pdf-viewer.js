@@ -256,7 +256,7 @@ class PdfViewer extends SvgPlus {
           this._pageNumber = page;
           await this.loadPDF(url);
         } else if (type == "stream") {
-          this.video.srcObject = url;
+          // this.video.srcObject = url;
         } else {
           this.image.props = {src: url};
           this._url = url;

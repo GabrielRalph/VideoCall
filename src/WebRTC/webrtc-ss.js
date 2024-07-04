@@ -1,69 +1,101 @@
-export class WebRTCSS {
-    constructor(config, stream) {
-        let pc = new RTCPeerConnection(config);
-        this.config = config;
-        this.pc = pc;
-        this.makingOffer = false;
-        this.stream = stream;
-        this.remoteStream = null;
-        pc.ontrack = (e) => this.ontrackadded(e)
-        pc.onnegotiationneeded = (e) => this.onnegotiationneeded(e);
-        pc.oniceconnectionstatechange = (e) => this.oniceconnectionstatechange(e);
-        pc.onicecandidate = (e) => this.onicecandidate(e);
 
-        if (stream !== null) {
-            for (const track of stream.getTracks()) {
-                pc.addTrack(track, stream);
+export class WebRTCSS {
+    constructor() {
+        this._buffer = [];
+    }
+
+    async initialise(config, toWatch = false){
+        if (!this.initialised) {
+            this.initialised = true;
+            let pc = new RTCPeerConnection(config);
+            this.config = config;
+            this.pc = pc;
+            this.makingOffer = false;
+            this.remoteStream = null;
+            pc.ontrack = (e) => this.ontrackadded(e)
+            pc.onnegotiationneeded = (e) => this.onnegotiationneeded(e);
+            pc.oniceconnectionstatechange = (e) => this.oniceconnectionstatechange(e);
+            pc.onicecandidate = (e) => this.onicecandidate(e);
+    
+            let stream = null;
+            if (!toWatch) {
+                if (this.stream instanceof MediaStream) {
+                    stream = this.stream;
+                } else {
+                    // create dummy stream
+                    let [width, height] = [640, 480];
+                    let canvas = Object.assign(document.createElement("canvas"), {width, height});
+                    canvas.getContext('2d').fillRect(0, 0, width, height);
+                    stream = canvas.captureStream();
+                }
             }
+    
+            console.log(stream)
+            if (stream !== null) {
+                for (const track of stream.getTracks()) {
+                    pc.addTrack(track, stream);
+                }
+            }
+    
+            this.stream = stream;
+    
+            console.log("buffer", this._buffer);
+            while (this._buffer.length != 0) {
+                this.onSignal(this._buffer.shift());
+            }
+        } else {
+            this.pc.restartIce();
         }
     }
 
-    send(object) {
-
-    }
-
-    onStream(stream) {
-    }
+    send(object) {}
+    onStream(stream) {}
 
     async onSignal({ description, candidate }) {
-        let {stream, pc, makingOffer} = this;
-        try {
-            if (description) {
-                console.log("description " + description.type);
-                // console.log(pc.signalingState, makingOffer);
-                const offerCollision =
-                    description.type === "offer" &&
-                    (makingOffer || pc.signalingState !== "stable");
-
-                let ignoreOffer = (stream !== null) && offerCollision;
-                // console.log("ignore", ignoreOffer);
-                if (!ignoreOffer) {
-                    try {
-                        console.log("setting remote description");
-                        await pc.setRemoteDescription(description);
-                        if (description.type === "offer") {
-                            console.log("here");
-                            await pc.setLocalDescription();
-                            console.log("sending description");
-                            this.send({ description: pc.localDescription.toJSON() });
-                        }
-                    } catch (e) {
-                        throw `description failure`
-                    }
-                }
-            } else if (candidate) {
-                console.log("candidate in", candidate);
-
-                try {
-                    await pc.addIceCandidate(candidate);
-                } catch (e) {
+        console.log("signal");
+        if (this.pc instanceof RTCPeerConnection) {
+            let {stream, pc, makingOffer} = this;
+            try {
+                if (description) {
+                    console.log("description " + description.type);
+                    // console.log(pc.signalingState, makingOffer);
+                    const offerCollision =
+                        description.type === "offer" &&
+                        (makingOffer || pc.signalingState !== "stable");
+    
+                    let ignoreOffer = (stream !== null) && offerCollision;
+                    // console.log("ignore", ignoreOffer);
                     if (!ignoreOffer) {
-                        console.log(e);
-                        throw 'candidate failure';
+                        try {
+                            console.log("setting remote description");
+                            await pc.setRemoteDescription(description);
+                            if (description.type === "offer") {
+                                console.log("here");
+                                await pc.setLocalDescription();
+                                console.log("sending description");
+                                this.send({ description: pc.localDescription.toJSON() });
+                            }
+                        } catch (e) {
+                            throw `description failure`
+                        }
+                    }
+                } else if (candidate) {
+                    console.log("candidate in", candidate);
+    
+                    try {
+                        await pc.addIceCandidate(candidate);
+                    } catch (e) {
+                        if (!ignoreOffer) {
+                            console.log(e);
+                            throw 'candidate failure';
+                        }
                     }
                 }
+            } catch (e) {
             }
-        } catch (e) {
+        } else {
+            console.log("buffer", this._buffer);
+            this._buffer.push({candidate, description});
         }
     }
       
@@ -76,11 +108,11 @@ export class WebRTCSS {
       
     oniceconnectionstatechange(){
         let {pc} = this;
-        console.log("ice: ", pc.iceConnectionState);
+        console.log("ss-state", this.state)
+        
         if (pc.iceConnectionState === "failed") {
           pc.restartIce();
         } if (pc.iceConnectionState == "disconnected") {
-            this.onStream(null)
         }
     }
       
@@ -99,55 +131,37 @@ export class WebRTCSS {
       
     ontrackadded({ track, streams }){
         this.remoteStream = streams[0];
-        console.log(streams);
         track.onunmute = () => {
             let {pc} = this;
-            console.log(pc.signalingState, pc.iceConnectionState);
-         this.onStream(streams[0]);
+            this.onStream(streams[0]);
+            this._track_live = true;
+            console.log("ss-state", this.state)
         };
         track.onmute = () => {
-   
-        }
-    }
-      
-    static async shareScreen(config, displayMediaOptions = {
-        video: {
-        displaySurface: "window",
-        },
-        audio: false,
-        surfaceSwitching: "include",
-        selfBrowserSurface: "exclude",
-    }){
-        let stream = null;
-        try {
-            stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
-            return new WebRTCSS(config, stream)
-        } catch (err) {
-            console.error(`Error: ${err}`);
-            return null
+            this._track_live = false;
+            console.log("ss-state", this.state)
+
         }
     }
 
-    static watchScreen(config, info) {
-        let ss = new WebRTCSS(config, null);
-        ss.onSignal(info);
-        return ss;
+
+    
+    get connected(){
+        return this.pc.iceConnectionState == "connected";
     }
 
-    close(){
+    get state(){
+        return `${this.connected ? "i": "-"}${this._track_live ? "t" : "-"}`
+    }
 
-        if (this.stream != null) {
-            // this.stream.oninactive = null;
-            for (let track of this.stream.getTracks()) {
+    stopTrack(){
+        let {stream} = this;
+        if (stream instanceof MediaStream)  {
+            stream.oninactive = null;
+            for (let track of stream.getTracks()) {
                 track.stop();
             }
         }
-    //     this.onStream = () => {};
-    //     this.pc.close();
-    }
-
-    get connected(){
-        return this.pc.iceConnectionState == "connected";
     }
 
     async replaceStream(displayMediaOptions = {
@@ -159,25 +173,45 @@ export class WebRTCSS {
         selfBrowserSurface: "exclude",
     }){
         let stream = null;
+        let result = false;
+        let oldStream = this.stream;
         try {
-            let oldStream = this.stream;
-            oldStream.oninactive = null;
-            
+            if (oldStream instanceof MediaStream)  {
+                oldStream.oninactive = null;
+            }
             stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
             this.stream = stream;
-            const [videoTrack] = stream.getVideoTracks();
-            
-            const sender = this.pc
-            .getSenders()
-            .find((s) => s.track.kind === videoTrack.kind);
-            console.log("Found sender:", sender);
-            sender.replaceTrack(videoTrack);
-            for (let track of oldStream.getTracks()) {
-                track.stop();
-            }
+            result = true;
         } catch (err) {
+            stream = oldStream;
             console.error(`Error: ${err}`);
-            return null
         }
+        
+        
+        stream.oninactive = () => {
+            console.log("TRACK INACTIVATE");
+            this.onStream(null)
+        }
+            
+        this.onStream(stream);
+            
+        if (result) {
+            if (this.pc instanceof RTCPeerConnection) {
+                const [videoTrack] = stream.getVideoTracks();
+                const sender = this.pc.getSenders().find((s) => s.track.kind === videoTrack.kind);
+                console.log("Found sender:", sender);
+                sender.replaceTrack(videoTrack);
+            }
+
+            // stop old Stream tracks
+            if (oldStream instanceof MediaStream) {
+                for (let track of oldStream.getTracks()) {
+                    track.stop();
+                }
+            }
+        }
+
+        return true;
+        
     }
 }

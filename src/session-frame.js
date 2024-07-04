@@ -836,16 +836,15 @@ class SessionFrame extends SvgPlus {
 
 
   async shareScreen() {
-    let ss = await WebRTC.shareScreen();
-    if (ss != null) {
-      // this.setFile({type: "stream", url: ss.stream});
-      WebRTC.setSessionFieldState("content", {type: "stream"})
-      this.setFile({type: "stream"})
-      this.pdf.video.srcObject = ss.stream;
-      ss.stream.oninactive = () => {
-        WebRTC.setSessionFieldState(null);
-        this.setFile(null);
-      }
+    
+    if (await WebRTC.updateShareScreen()) {
+      WebRTC.setSessionFieldState("content", {type: "stream", url: "stream"})
+      this.setFile({type: "stream", url: "stream"})
+      // this.pdf.video.srcObject = ss.stream;
+      // ss.stream.oninactive = () => {
+      //   WebRTC.setSessionFieldState(null);
+      //   this.setFile(null);
+      // }
     }
   }
 
@@ -1079,8 +1078,8 @@ class SessionFrame extends SvgPlus {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
         if (state.status == "open") {
-          if (this.type == "host") WebRTC.refreshShare();
-          if (this.type == "participant") WebRTC.closeShare();
+          // if (this.type == "host") WebRTC.refreshShare();
+          // if (this.type == "participant") WebRTC.closeShare();
         } else {
           this.session_view.toContentView(this.hasContent);
         } 
@@ -1092,7 +1091,11 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("contentInfo" in state) {
-        this.setFile(state.contentInfo);
+        if (this.type == "host" && state.contentInfo.type == "stream") {
+          this.removeFile();
+        } else {
+          this.setFile(state.contentInfo);
+        }
       }
 
       if ("bubbleState" in state) {
@@ -1116,9 +1119,12 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("screenStream" in state) {
-
-        this.pdf.video.srcObject = state.screenStream;
-   
+        console.log(state.screenStream);
+        if (state.screenStream == null) {
+          this.removeFile()
+        } else {
+          this.pdf.video.srcObject = state.screenStream;
+        }
       }
 
       if ("appInfo" in state) {

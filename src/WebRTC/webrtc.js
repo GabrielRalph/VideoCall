@@ -9,7 +9,9 @@ let initialised = false;
  */
 let localStream = null;
 let remoteStream = null;
-let screenSharePC = null;
+let screenSharePC = new WebRTCSS();
+screenSharePC.onStream = (stream) => { updateStateListeners({screenStream: stream})}
+
 let sendChannel;
 let receiveChannel;
 let onUpdateHandler = () => {};
@@ -227,10 +229,10 @@ function updateHandler(type, data){
       sessionState = "open"
       remoteContentStatus.recv = true;
       state_update = {status: "open", remote: {stream: remoteStream}};
-      // if (sendBuffer instanceof ChunkSendBuffer) {
-      //   sendBuffer.reset(getMaxMessageSize());
-      //   sendChunk(0);
-      // }
+
+      screenSharePC.send = (data) => {sendMessage("S" + JSON.stringify(data))}
+      screenSharePC.initialise(getDefaulIceServers(), RTCSignaler.isPolite());
+
       rtc_log_state();
       rtc_l1_log("open");
     }
@@ -380,18 +382,7 @@ function sendMessage(message) {
 
 
 async function ssReceive(data) {
-  if (screenSharePC == null) {
-    screenSharePC = WebRTCSS.watchScreen(getDefaulIceServers(), data);
-    screenSharePC.send = (data) => {
-      sendMessage("S" + JSON.stringify(data))
-    }
-    screenSharePC.onStream = (stream) => {
-      console.log(stream);
-      updateStateListeners({screenStream: stream});
-    }
-  } else {
-    screenSharePC.onSignal(data);
-  }
+  screenSharePC.onSignal(data);
 }
 
 /* Send message sends a message accros the data channel*/
@@ -509,42 +500,15 @@ function startMessageChannel(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-export async function shareScreen(){
+export async function updateShareScreen(){
+ return await screenSharePC.replaceStream();
  
-  try {
-    if (screenSharePC instanceof WebRTCSS) {
-        await screenSharePC.replaceStream();
-      } else {
-      screenSharePC = await WebRTCSS.shareScreen(getDefaulIceServers());
-      screenSharePC.send = (data) => {
-        sendMessage("S" + JSON.stringify(data))
-      }
-    }
-    return screenSharePC;
-  } catch (e) {
-    return null
-  }
-}
-
-export function refreshShare(){
-  if (screenSharePC instanceof WebRTCSS) {
-    console.log("refresh");
-    screenSharePC.pc.close();
-    screenSharePC = new WebRTCSS(screenSharePC.config, screenSharePC.stream);
-    screenSharePC.send = (data) => {
-      sendMessage("S" + JSON.stringify(data))
-    }
-  }
-  return screenSharePC;
 }
 
 export function closeShare(){
-  if (screenSharePC instanceof WebRTCSS) {
-    screenSharePC.close();
-    screenSharePC = null;
-    updateStateListeners({screenStream: null})
-  }
+  screenSharePC.stopTrack();
 }
+
 /* load instantiates the WebRTC Peer connection object. Initialise the firebase database if it has not been done
     already and retreive the ice server provider config.
     If the boolean parameter "onlyFirebase" is set true then only the firebase database will be initialised 
