@@ -1,4 +1,4 @@
-import {set, get, ref,update, push, child, getDB, getUID, onChildAdded, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
+import {set, get, ref,update, push, child, getDB, getUID, onChildAdded, onChildRemoved, onChildChanged, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "sessions";
 
@@ -146,26 +146,6 @@ function addListeners(key, userType){
   for (let s of STATE_FIELDS) {
     addStateFieldListener(s, key, userType);
   }
-  // let contentRef = getSessionRef(key, "content");
-  // if (userType == "host") {
-  //   // Get content information once at the start for host
-  //   let gc = async () => {
-  //     let contentInfo = (await get(contentRef)).val();
-  //     if (contentInfo != null) {
-  //       messageHandler({data: {contentInfo}});
-  //     }
-  //   }
-  //   gc();
-  // } else {
-  //   // Watch content info for the participant
-  //   ContentListener = onValue(contentRef, (sc) => {
-  //     let contentInfo = sc.val();
-  //     messageHandler({data: {contentInfo}})
-  //   })
-  // }
-
-
-
 
   let descriptionRef = getSessionRef(key, `${listenTo}/description`);
   DescriptionListener = onChildAdded(descriptionRef, (sc) => {
@@ -321,4 +301,75 @@ export function getKey(){
 
 export function getUserType(){
   return UserType;
+}
+
+
+
+/**
+ * @param {String} appName
+ * @param {Object} app
+ */
+export function addAppDatabase(appName, app = {}) {
+  console.log(appName, app);
+  if (typeof appName === "string" && typeof app === "object" && app !== null) {
+    if (getKey() != null && getDB() != null) {
+      let appRef = (path) => {
+        let r = getSessionRef(getKey(), "app-" + appName);
+        if (typeof path === "string") r = child(r, path);
+        return r;
+      }
+      let listeners = [];
+    
+      
+      let funcs = {
+        get: async (path) => (await get(appRef(path))).val(),
+        set: (path, value) => set(appRef(path), value),
+        push: (path, value) => {
+          console.log("here");
+          let pr = push(appRef(path));
+          return pr.key;
+        },
+        onValue: (path, cb) => {
+          if (cb instanceof Function) {
+            listeners.push(onValue(appRef(path), (sc) => cb(sc.val())))
+          } else {
+            throw "The callback must be a function"
+          }
+        },
+        onChildAdded: (path, cb) => {
+          if (cb instanceof Function) {
+            listeners.push(onChildAdded(appRef(path), (sc, key) => cb(sc.val(), sc.key, key) ))
+          } else {
+            throw "The callback must be a function"
+          }
+        },
+        onChildRemoved: (path, cb) => {
+          if (cb instanceof Function) {
+            listeners.push(onChildRemoved(appRef(path), (sc) => cb(sc.val(), sc.key)))
+          } else {
+            throw "The callback must be a function"
+          }
+        },
+        onChildChanged: (path, cb) => {
+          if (cb instanceof Function) {
+            listeners.push(onChildChanged(appRef(path), (sc, key) => cb(sc.val(), sc.key, key)))
+          } else {
+            throw "The callback must be a function"
+          }
+        },
+        close: () => {
+          for (let listener of listeners) listener();
+          set(appRef(), null);
+        },
+        kwajo: "here"
+      };
+
+      // console.log(funcs);
+      // return funcs
+      for (let key in funcs) {
+        app[key] = funcs[key]
+
+      }
+    }
+  }
 }

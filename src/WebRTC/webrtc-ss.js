@@ -166,7 +166,8 @@ export class WebRTCSS {
 
     async replaceStream(displayMediaOptions = {
         video: {
-        displaySurface: "window",
+            displaySurface: "window",
+            
         },
         audio: false,
         surfaceSwitching: "include",
@@ -179,7 +180,14 @@ export class WebRTCSS {
             if (oldStream instanceof MediaStream)  {
                 oldStream.oninactive = null;
             }
+
             stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+
+            let videoTrack = stream.getVideoTracks()[0];
+            videoTrack.onmute = () => {
+                console.log("Track muted ", videoTrack.muted);
+            }
+            
             this.stream = stream;
             result = true;
         } catch (err) {

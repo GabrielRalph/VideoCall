@@ -81,7 +81,13 @@ class PdfViewer extends SvgPlus {
     this.loader = loader;
 
     this.innerHTML = "";
-    this.image = this.createChild("img");
+    this.image = this.createChild("img", {
+      'draggable': 'false',
+      events: {
+        'dragstart': e => e.preventDefault()
+      }
+    });
+   
     this.canvas = this.createChild("canvas", {width: 1000, height: 1000});
     this.video = this.createChild("video", {playsinline: true, muted: true, autoplay: true});
     let icons = this.createChild("div", {class: "pdf-controls"});

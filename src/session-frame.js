@@ -367,9 +367,10 @@ class AppsPanel extends SvgPlus{
     super("apps-panel");
     let title = this.createChild("div", {class: "title"});
     title.createChild("div", {content: "Apps"});
-    this.title = "";
     let close = title.createChild("div", {class: "icon", content: Icons["close"]});
     this.close = close;
+
+    this.titleEl = title
 
     this.main = this.createChild("div", {class: "main-items"});
     this.main.innerHTML = "Coming Soon"
@@ -394,6 +395,7 @@ class AppsPanel extends SvgPlus{
   }
 
   set app(app) {
+    this.titleEl.innerHTML = app.constructor.name;
     if (app.sideWindow != null) {
       this.main.innerHTML = "";
       this.main.appendChild(app.sideWindow);
@@ -779,8 +781,9 @@ class SessionFrame extends SvgPlus {
         if (!(this.squidlyApp instanceof SquidlyApp)) {
             console.log("add app");
             try {
-              let app = new appClass(sender == this.type);
+              let app = new appClass(sender == this.type, (a)=>WebRTC.addAppDatabase(appClass.name, a));
               this.squidlyApp = app;
+              console.log(app);
             
               this.apps_panel.app = app;
               let main = app.mainWindow;
@@ -788,23 +791,24 @@ class SessionFrame extends SvgPlus {
                 this.main_app_window.appendChild(main);
               }
               
-              app.data = data;
-              app.addUpdateListener((data) => {
-                WebRTC.setSessionFieldState("appInfo", {
-                  name: name,
-                  sender: sender,
-                  data: app.data
-                })
-              })
+              // app.data = data;
+              // app.addUpdateListener((data) => {
+              //   WebRTC.setSessionFieldState("appInfo", {
+              //     name: name,
+              //     sender: sender,
+              //     data: app.data
+              //   })
+              // })
 
             } catch(e) {
               console.log(e);
             }
 
         // The correct App is open so update its data
-        } else {
-          this.squidlyApp.data = data;
-        }
+        } 
+        // else {
+        //   this.squidlyApp.data = data;
+        // }
       } 
     } else {
       this._removeApp();
@@ -812,6 +816,7 @@ class SessionFrame extends SvgPlus {
   }
 
   _removeApp(){
+    if (this.squidlyApp instanceof SquidlyApp) this.squidlyApp.close();
     this.apps_panel.renderApps();
     this.main_app_window.innerHTML = "";
     this.squidlyApp = null;

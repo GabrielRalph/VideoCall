@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+
+<script type = "module">
+    import {ColorPicker} from "./color-picker.js"
+    import DrawingApp from "./draw-app.js"
+    import {fitCurve} from "./fitcurve.js"
+    import {SvgPlus, Vector} from "../../SvgPlus/4.js"
+    let app = new DrawingApp(true);
+
+    let plot = new SvgPlus("svg");
+    plot.class = "plot"
+    function plotData(data) {
+        if (!(data[0] instanceof Vector)) {
+            data = data.map((v, i) => new Vector(i, v));
+        }
+
+        let pad = new Vector(3, 3)
+        let min = new Vector(Math.min(...data.map(v=>v.x)), Math.min(...data.map(v=>v.y)))
+        let max = new Vector(Math.max(...data.map(v=>v.x)), Math.max(...data.map(v=>v.y)))
+        min = min.sub(pad);
+        let size = max.sub(min).add(pad.mul(2))
+        plot.props = {
+            "viewBox": `${min.x} ${min.y} ${size.x} ${size.y}`
+        }
+        plot.innerHTML = "";
+        plot.createChild("path", {
+            fill: "none",
+            stroke: "black",
+            d: "M" + data.join("L")
+        })
+    }
+
+    let main = app.mainWindow;
+    document.body.appendChild(main);
+    document.body.appendChild(app.sideWindow);
+    document.body.appendChild(plot);
+
+        
+  
+
+</script>
+
+<style>
+    .plot {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 50vw;
+    }
+    .app-main-window {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 20vw;
+    }
+    .app-side-window {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 20vw;
+        right: 0;
+        background-color: rgb(217 214 213);
+    }
+
+</style>
+</html>

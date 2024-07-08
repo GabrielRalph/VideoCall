@@ -500,6 +500,10 @@ function startMessageChannel(){
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PUBLIC FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+
+export function addAppDatabase(name, app) {
+  return RTCSignaler.addAppDatabase(name, app)
+}
 export async function updateShareScreen(){
  return await screenSharePC.replaceStream();
  
