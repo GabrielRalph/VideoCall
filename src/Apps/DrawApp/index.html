@@ -14,35 +14,35 @@
     import DrawingApp from "./draw-app.js"
     import {fitCurve} from "./fitcurve.js"
     import {SvgPlus, Vector} from "../../SvgPlus/4.js"
-    let app = new DrawingApp(true);
+    let app = new DrawingApp(true, ()=>{});
 
-    let plot = new SvgPlus("svg");
-    plot.class = "plot"
-    function plotData(data) {
-        if (!(data[0] instanceof Vector)) {
-            data = data.map((v, i) => new Vector(i, v));
-        }
+    // let plot = new SvgPlus("svg");
+    // plot.class = "plot"
+    // function plotData(data) {
+    //     if (!(data[0] instanceof Vector)) {
+    //         data = data.map((v, i) => new Vector(i, v));
+    //     }
 
-        let pad = new Vector(3, 3)
-        let min = new Vector(Math.min(...data.map(v=>v.x)), Math.min(...data.map(v=>v.y)))
-        let max = new Vector(Math.max(...data.map(v=>v.x)), Math.max(...data.map(v=>v.y)))
-        min = min.sub(pad);
-        let size = max.sub(min).add(pad.mul(2))
-        plot.props = {
-            "viewBox": `${min.x} ${min.y} ${size.x} ${size.y}`
-        }
-        plot.innerHTML = "";
-        plot.createChild("path", {
-            fill: "none",
-            stroke: "black",
-            d: "M" + data.join("L")
-        })
-    }
+    //     let pad = new Vector(3, 3)
+    //     let min = new Vector(Math.min(...data.map(v=>v.x)), Math.min(...data.map(v=>v.y)))
+    //     let max = new Vector(Math.max(...data.map(v=>v.x)), Math.max(...data.map(v=>v.y)))
+    //     min = min.sub(pad);
+    //     let size = max.sub(min).add(pad.mul(2))
+    //     plot.props = {
+    //         "viewBox": `${min.x} ${min.y} ${size.x} ${size.y}`
+    //     }
+    //     plot.innerHTML = "";
+    //     plot.createChild("path", {
+    //         fill: "none",
+    //         stroke: "black",
+    //         d: "M" + data.join("L")
+    //     })
+    // }
+    // document.body.appendChild(plot);
 
     let main = app.mainWindow;
     document.body.appendChild(main);
     document.body.appendChild(app.sideWindow);
-    document.body.appendChild(plot);
 
         
   
@@ -69,6 +69,8 @@
         top: 0;
         bottom: 0;
         width: 20vw;
+        padding: 0.5em;
+
         right: 0;
         background-color: rgb(217 214 213);
     }

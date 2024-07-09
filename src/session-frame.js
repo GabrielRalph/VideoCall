@@ -362,40 +362,61 @@ class MouseSelection extends SvgPlus {
 }
 
 
+/** 
+ * 
+ *  App Panel
+ * 
+ */
 class AppsPanel extends SvgPlus{
   constructor(){
     super("apps-panel");
     let title = this.createChild("div", {class: "title"});
-    title.createChild("div", {content: "Apps"});
+    title.createChild("div", {
+      class: "icon", 
+      content: Icons.back,
+      events: {
+        click: () => {
+          const event = new Event("close-app", {bubbles: true});
+          this.dispatchEvent(event);
+        }
+      }
+    })
+    let titleText = title.createChild("div", {content: "Apps"});
     let close = title.createChild("div", {class: "icon", content: Icons["close"]});
     this.close = close;
 
-    this.titleEl = title
+    this.titleText = titleText;
 
     this.main = this.createChild("div", {class: "main-items"});
     this.main.innerHTML = "Coming Soon"
   }
 
   renderApps() {
+    this.removeAttribute("app");
+    this.titleText.innerHTML = "Apps"
     this.main.innerHTML = "";
     let icons = this.main.createChild("div", {class: "icons-container"})
     for (let appName in Apps) {
-      let appIcon = icons.createChild("div", {class: "app-icon"});
-      // let container = appIcon.createChild("div", {class: "icon-container"});
-      // container.createChild("div", {class: "icon-sizer"})
+      let appIcon = icons.createChild("div", {class: "app-icon", events: {
+        click: () => {
+          const event = new CustomEvent("app-selection", {bubbles: true});
+          event.appName = appName;
+          this.dispatchEvent(event);
+        }
+      }});
+      
       let wrapper = appIcon.createChild("div", {class: "icon-wrapper"})
       wrapper.appendChild(Apps[appName].appIcon);
-      appIcon.createChild("div", {class: "icon-name", content: Apps[appName].name})
-      appIcon.onclick = () => {
-        const event = new CustomEvent("app-selection", {bubbles: true});
-        event.appName = appName;
-        this.dispatchEvent(event);
-      }
+      appIcon.createChild("div", {
+        class: "icon-name", 
+        content: Apps[appName].name
+      })
     }
   }
 
   set app(app) {
-    this.titleEl.innerHTML = app.constructor.name;
+    this.setAttribute("app", app.constructor.name)
+    this.titleText.innerHTML = app.constructor.name;
     if (app.sideWindow != null) {
       this.main.innerHTML = "";
       this.main.appendChild(app.sideWindow);
@@ -403,7 +424,11 @@ class AppsPanel extends SvgPlus{
   }
 }
 
-
+/** 
+ * 
+ *  Settings Panel
+ * 
+ */
 class SettingsPanel extends SvgPlus{
   constructor(){
     super("settings-panel");
@@ -478,6 +503,11 @@ class SettingsPanel extends SvgPlus{
 
 }
 
+/** 
+ * 
+ *  Session View
+ * 
+ */
 class SessionView extends HideShow {
   constructor(){
     super("session-view")
@@ -662,9 +692,13 @@ class SessionFrame extends SvgPlus {
 
 
     this.addEventListener("app-selection", (e) => {
+      console.log(e);
       this.openApp(e.appName)
     })
 
+    this.addEventListener("close-app", (e) => {
+      this.closeApp()
+    })
     // this.main_window = main;
     // this.side_window = side_window;
 
@@ -765,8 +799,9 @@ class SessionFrame extends SvgPlus {
   
 
   _updateApp(info) {
+    console.log(info);
     if (info != null) {
-      let {name, sender, data} = info
+      let {name, sender} = info
       if (name in Apps) {
 
         let appClass = Apps[name];
@@ -791,15 +826,6 @@ class SessionFrame extends SvgPlus {
                 this.main_app_window.appendChild(main);
               }
               
-              // app.data = data;
-              // app.addUpdateListener((data) => {
-              //   WebRTC.setSessionFieldState("appInfo", {
-              //     name: name,
-              //     sender: sender,
-              //     data: app.data
-              //   })
-              // })
-
             } catch(e) {
               console.log(e);
             }
@@ -816,6 +842,7 @@ class SessionFrame extends SvgPlus {
   }
 
   _removeApp(){
+    console.log("remove");
     if (this.squidlyApp instanceof SquidlyApp) this.squidlyApp.close();
     this.apps_panel.renderApps();
     this.main_app_window.innerHTML = "";
@@ -833,6 +860,7 @@ class SessionFrame extends SvgPlus {
   }
 
   closeApp() {
+    console.log("close");
     WebRTC.setSessionFieldState("appInfo", null);
   }
 

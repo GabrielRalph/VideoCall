@@ -62,8 +62,8 @@ function colorLurp(c1, c2, t) {
     let c1a = {};
     let c2a = {}
     for (let key in c1) {
-        c1a[key] = c1[key] * t;
-        c2a[key] = c2[key] * (1 - t);
+        c1a[key] = key == "a" ? c1[key] * t : c1[key];
+        c2a[key] = key == "a" ? c2[key] * (1 - t) : c2[key];
     }
 
     return addColors(c1a, c2a);

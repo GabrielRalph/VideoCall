@@ -154,6 +154,9 @@ apps-panel .main-items {
 .icon-sizer {
     margin: 100%;
 } */
+apps-panel:not([app]) .title .icon:first-of-type {
+    display: none;
+}
 apps-panel .icons-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -193,7 +196,18 @@ apps-panel .app-icon:nth-of-type(3n+2) {
 }
 
 
-
+.title {
+    border-bottom: var(--sp) solid var(--tbc);
+    padding: 0.3em;
+    font-size: 1.3em;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    color: white;
+}
+.title > div {
+    text-transform: capitalize;
+}
 
 popup-info {
     border-radius: 0.5em;
@@ -221,15 +235,6 @@ settings-panel > .main-items * {
     /* padding-left: 1em; */
 }
 
-.title {
-    border-bottom: var(--sp) solid var(--tbc);
-    padding: 0.3em;
-    font-size: 1.3em;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-    color: white;
-}
 
 settings-panel .device *:first-child {
     font-weight: bold;

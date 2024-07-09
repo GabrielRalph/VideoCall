@@ -76,6 +76,7 @@ class PdfViewer extends SvgPlus {
       this._end_load = resolve;
     })
   }
+
   onconnect(){
     let loader = this.querySelector("[name = 'loader']");
     this.loader = loader;
@@ -89,12 +90,17 @@ class PdfViewer extends SvgPlus {
     });
    
     this.canvas = this.createChild("canvas", {width: 1000, height: 1000});
+
+    /** @type {HTMLCanvasElement} */
+    this.streamCanvas = this.createChild("canvas");
+    this.streamCtx = this.streamCanvas.getContext("2d", {willReadFrequently: true});
     this.video = this.createChild("video", {playsinline: true, muted: true, autoplay: true});
+    this.video.remove();
     let icons = this.createChild("div", {class: "pdf-controls"});
     this.icons = icons;
     this.middle_icon = icons.createChild("div", {class: "bottom-middle"});
     
-    
+    this.updateVideo();
     this.addEventListener("mousewheel", (e) => {
       if (this.transformable) {
         let pixelPos = new Vector(e.clientX, e.clientY);
@@ -136,6 +142,17 @@ class PdfViewer extends SvgPlus {
         this.resetTransform();
       }
     })
+  }
+
+  async updateVideo(){
+    while(true) {
+      if (this.displayType == "stream" && this.video.videoWidth > 0) {
+        this.streamCanvas.width = this.video.videoWidth;
+        this.streamCanvas.height = this.video.videoHeight;
+        this.streamCtx.drawImage(this.video, 0, 0, this.streamCanvas.width, this.streamCanvas.height);
+      }
+      await delay();
+    }
   }
 
   transformEvent(mode = "I", scale=this.scale, offset=this.offset){
@@ -191,6 +208,7 @@ class PdfViewer extends SvgPlus {
       this.offset = offset;
     }
   }
+
   set scale(x) {
     this.styles = {"--scale": x}; 
     this._scale = x
@@ -199,6 +217,7 @@ class PdfViewer extends SvgPlus {
     this.styles = {"--offset-x": v.x*100 + "%", "--offset-y": v.y * 100 + "%"}; 
     this._offset = v.clone()
   }
+
   get scale(){return this._scale;}
   get offset(){return this._offset;}
 
@@ -209,12 +228,15 @@ class PdfViewer extends SvgPlus {
     this._pageNumber = value;
     this.renderPage();
   }
+
   get page() {
     return this._pageNumber;
   }
+
   get pageNum() {
     return this._pageNumber;
   }
+
   get totalPages() {
     if (hasKey(this.pdfDoc, "numPages")) {
       return this.pdfDoc.numPages
@@ -226,7 +248,7 @@ class PdfViewer extends SvgPlus {
     this._displayType = type;
     this.canvas.styles = {display: type == "pdf" ? null : "none"};
     this.image.styles = {display: type == "image" ? null : "none"};
-    this.video.styles = {display: type == "stream" ? null : "none"};
+    this.streamCanvas.styles = {display: type == "stream" ? null : "none"};
   }
 
   get displayType(){
@@ -235,8 +257,12 @@ class PdfViewer extends SvgPlus {
 
   get displayBBox(){
     if (this.displayType == "pdf") return this.canvas.bbox;
-    else if (this.displayType == "stream") return this.video.bbox;
+    else if (this.displayType == "stream") return this.streamCanvas.bbox;
     else return this.image.bbox;
+  }
+
+  set stream(stream){
+    this.video.srcObject = stream;
   }
   // async openFile(){
   //   return await openFile();
