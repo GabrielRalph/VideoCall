@@ -165,9 +165,8 @@ const CommunicationGrid = [
           item.toggleAttribute("hover", true);
           item.onOver();
         }
-      } else {
-        this.onVector(e, true);
-      }
+      } 
+      this.onVector(e, true);
     }
   
     getItemAtVector(v) {
