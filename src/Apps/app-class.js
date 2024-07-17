@@ -150,6 +150,13 @@ export class SquidlyApp{
         }
         return window;
     }
+
+    /**
+     * @return {String}
+     */
+    static get description(){
+        return "Some description about the app"
+    }
     
 
     /**

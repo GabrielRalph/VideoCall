@@ -10,6 +10,8 @@ import {CalibrationFrame} from "./EyeTracking/UI/calibration-frame.js"
 import {FeedbackFrame} from "./EyeTracking/UI/feedback-frame.js"
 import {PdfViewer} from "./PDF/pdf-viewer.js"
 import {getApps, SquidlyApp} from "./Apps/app-library.js"
+import { CommunicationBoard } from "./communication-board.js"
+import {Messages} from "./messages.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
@@ -39,6 +41,51 @@ async function waitClick(elem){
       resolve(true);
     }
   })
+}
+
+
+async function openContent(){
+  let input = new SvgPlus("input");
+  input.props = {type: "file", accept: "image/*, .pdf"};
+  return new Promise((resolve) => {
+    input.click();
+    input.onchange = () => {
+      if (input.files.length > 0) {
+        let file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          file.url = evt.target.result;
+          resolve(file);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  });
+}
+
+const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
+function encodeSVG (data) {
+  // Use single quotes instead of double to avoid encoding.
+  data = data.replace(/"/g, `'`);
+
+  data = data.replace(/>\s{1,}</g, `><`);
+  data = data.replace(/\s{2,}/g, ` `);
+
+  // Using encodeURIComponent() as replacement function
+  // allows to keep result code readable
+  return data.replace(symbols, encodeURIComponent);
+}
+
+
+function setMouseSVG(svg) {
+    let svghtml = svg.outerHTML;
+    let g = svg.querySelector('g')
+    let [pos, size] = g.svgBBox;
+    let cursor = new SvgPlus("svg");
+    cursor.props = {width: size.x, height: size.y, xmlns: "http://www.w3.org/2000/svg", viewBox: `${pos.x} ${pos.y} ${size.x} ${size.y}`};
+    cursor.innerHTML = g.innerHTML;
+    let uri = encodeSVG(cursor.outerHTML);
+    document.body.style.setProperty("--cursor", `url("data:image/svg+xml,${uri}"), auto`);
 }
 
 
@@ -83,8 +130,6 @@ class ToolBar extends SvgPlus {
     }
     
  
-
-
     this.share = this.createChild("div", {class: "tbs icon", type: "file"});
     
     this.file = new SvgPlus("div");
@@ -103,11 +148,13 @@ class ToolBar extends SvgPlus {
     this.fileProgress = fl;
 
     this.more = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["more"]});
+    this.msg = this.createChild("div", {class: "icon tbs", type: "msg", content: Icons["msg"]});
     this.apps = this.createChild("div", {class: "icon tbs", type: "apps", content: Icons["apps"]});
     this.apps.remove();
     this.settings = this.createChild("div", {class: "icon tbs", type: "settings", content: Icons["settings"]});
     this.settings.remove();
-    this.more.onclick = () => this.showListAt(this.more, [this.apps, this.settings], "");
+    this.msg.remove();
+    this.more.onclick = () => this.showListAt(this.more, [this.apps, this.settings, this.msg], "");
 
 
     let i4 = this.createChild("div", {class: "icon tbs", type: "end-call", content: Icons["end"]});
@@ -237,6 +284,7 @@ class ToolBar extends SvgPlus {
   }
 }
 
+
 class FeedbackWindow extends FloatingBox {
   constructor(el = "feedback-window") {
     super(el);
@@ -254,7 +302,7 @@ class FeedbackWindow extends FloatingBox {
  
 
   renderFeatures(features, canvas) {
-    this.continue.styles = {
+        this.continue.styles = {
       opacity: features.warning ? 0.5 : 1,
       "pointer-events": features.warning ? "none" : "all"
     }
@@ -263,51 +311,11 @@ class FeedbackWindow extends FloatingBox {
 }
 
 
-
-async function openContent(){
-  let input = new SvgPlus("input");
-  input.props = {type: "file", accept: "image/*, .pdf"};
-  return new Promise((resolve) => {
-    input.click();
-    input.onchange = () => {
-      if (input.files.length > 0) {
-        let file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          file.url = evt.target.result;
-          resolve(file);
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  });
-}
-
-const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
-function encodeSVG (data) {
-  // Use single quotes instead of double to avoid encoding.
-  data = data.replace(/"/g, `'`);
-
-  data = data.replace(/>\s{1,}</g, `><`);
-  data = data.replace(/\s{2,}/g, ` `);
-
-  // Using encodeURIComponent() as replacement function
-  // allows to keep result code readable
-  return data.replace(symbols, encodeURIComponent);
-}
-
-
-function setMouseSVG(svg) {
-    let svghtml = svg.outerHTML;
-    let g = svg.querySelector('g')
-    let [pos, size] = g.svgBBox;
-    let cursor = new SvgPlus("svg");
-    cursor.props = {width: size.x, height: size.y, xmlns: "http://www.w3.org/2000/svg", viewBox: `${pos.x} ${pos.y} ${size.x} ${size.y}`};
-    cursor.innerHTML = g.innerHTML;
-    let uri = encodeSVG(cursor.outerHTML);
-    document.body.style.setProperty("--cursor", `url("data:image/svg+xml,${uri}"), auto`);
-}
-
+/** 
+ * 
+ *  MouseSelection
+ * 
+ */
 class MouseSelection extends SvgPlus {
   constructor(){
     super("div");
@@ -370,9 +378,11 @@ class MouseSelection extends SvgPlus {
 class AppsPanel extends SvgPlus{
   constructor(){
     super("apps-panel");
+    this.appShown = false;
     let title = this.createChild("div", {class: "title"});
     title.createChild("div", {
       class: "icon", 
+      type: "close-app",
       content: Icons.back,
       events: {
         click: () => {
@@ -397,26 +407,35 @@ class AppsPanel extends SvgPlus{
     this.main.innerHTML = "";
     let icons = this.main.createChild("div", {class: "icons-container"})
     for (let appName in Apps) {
-      let appIcon = icons.createChild("div", {class: "app-icon", events: {
-        click: () => {
-          const event = new CustomEvent("app-selection", {bubbles: true});
-          event.appName = appName;
-          this.dispatchEvent(event);
-        }
-      }});
+
+      let appEntry = icons.createChild("div", {class: "app-entry"})
       
-      let wrapper = appIcon.createChild("div", {class: "icon-wrapper"})
-      wrapper.appendChild(Apps[appName].appIcon);
-      appIcon.createChild("div", {
-        class: "icon-name", 
-        content: Apps[appName].name
+      let wrapper = appEntry.createChild("div", {
+        class: "icon-wrapper",
+        events: {
+          click: () => {
+            console.log("here");
+            const event = new CustomEvent("app-selection", {bubbles: true});
+            event.appName = appName;
+            this.dispatchEvent(event);
+          }
+        }
       })
+      wrapper.appendChild(Apps[appName].appIcon);
+      
+      let details = appEntry.createChild("div", {class: "app-details"})
+      details.createChild("div", {class: "app-name", content: appName});
+      details.createChild("div", {class: "app-description", content: Apps[appName].description})
+
+      
+
     }
   }
 
   set app(app) {
     this.setAttribute("app", app.constructor.name)
     this.titleText.innerHTML = app.constructor.name;
+    this.appShown = app.sideWindow != null;
     if (app.sideWindow != null) {
       this.main.innerHTML = "";
       this.main.appendChild(app.sideWindow);
@@ -517,11 +536,14 @@ class SessionView extends HideShow {
     /* Content View  */
     let splitContent = rel.createChild("div", {class: "split-content"});
     let rel2 = splitContent.createChild("div", {class: "rel"});
+
+    this.communicationBoard = this.createChild(CommunicationBoard)
     let contentView = new ConstantAspectRatio("div");
     contentView.aspectRatio = 1.2;
     contentView.class = "content-view"
     contentView.watchAspectRatio();
     rel2.appendChild(contentView);
+
     this.content_view = contentView;
     let mainContentView = contentView.createChild("div");
     this.pdf = mainContentView.createChild(PdfViewer);
@@ -556,6 +578,7 @@ class SessionView extends HideShow {
       left: 0,
       right: 0,
       bottom: 0,
+      "z-index": 3000,
       "pointer-events": "none"
     }
 
@@ -661,8 +684,6 @@ class SessionView extends HideShow {
   </side-window>
 </session-frame>
 */
-
-
 class SessionFrame extends SvgPlus {
   async onconnect(){
     this.lambda = 0.6;
@@ -684,6 +705,7 @@ class SessionFrame extends SvgPlus {
     this.default_view = session_view.default_view;
     this.content_view = session_view.content_view;
     this.main_app_window = session_view.main_app_window;
+    this.communicationBoard = session_view.communicationBoard;
 
     this.content_view.addEventListener("aspect-ratio", (e) => {
       if (this.type === "participant")
@@ -699,29 +721,7 @@ class SessionFrame extends SvgPlus {
     this.addEventListener("close-app", (e) => {
       this.closeApp()
     })
-    // this.main_window = main;
-    // this.side_window = side_window;
-
-    // let view = rel.createChild(VideoCallScreen);
-    // view.class = "top-side"
-    // let pullTab = view.createChild("div", {class: "pull-tab", content: "<"})
-    // let main2 = rel.createChild("div", {styles: {"position": "relative", "width": "100%", "height": "100%"}});
-
-    // this.session_content = main2.createChild("div", {name: "content"});
-    // this.pdf = this.session_content.createChild(PdfViewer);
-
-  
-    // this.web_rtc = main2.createChild("div", {name: "webrtc"});
-    // this.video_widget = this.web_rtc.createChild(VideoCallWidget);
-    // this.default_view = this.web_rtc.createChild(VideoCallScreen);
-    // this.default_view.class = "large"
-    // this.default_view.watchAspectRatio();
-    // this.tool_bar = this.web_rtc.createChild(ToolBar);
-    // this.video_widget.addEventListener("move", () => {
-    //   let ypos = -1 * this.video_widget.relativePosition.y;
-    //   this.tool_bar.top = ypos > 0.5;
-      
-    // });
+ 
     this.fileProgress = this.tool_bar.fileProgress;
     this.popup_info = new FloatingBox("popup-info");
     this.popup_info.align = new Vector(0.5, 0.2);
@@ -729,13 +729,15 @@ class SessionFrame extends SvgPlus {
 
     
     this.apps_panel = new AppsPanel();
+    this.messages = new Messages();
     this.apps_panel.renderApps();
     this.apps_panel.close.onclick = () =>  this.hideInSideWindow("apps");
     this.settings_panel = new SettingsPanel();
     this.settings_panel.close.onclick = () => this.hideInSideWindow("settings");
     this.side_window_items = {
       settings: this.settings_panel,
-      apps: this.apps_panel
+      apps: this.apps_panel,
+      messages: this.messages
     }
 
     this.calibration_frame = rel.createChild(CalibrationFrame);
@@ -821,11 +823,13 @@ class SessionFrame extends SvgPlus {
               console.log(app);
             
               this.apps_panel.app = app;
+              this.tool_bar.toggleAttribute("app-shown", this.apps_panel.appShown)
               let main = app.mainWindow;
               if (main !== null) {
                 this.main_app_window.appendChild(main);
               }
               
+              this.session_view.toContentView();
             } catch(e) {
               console.log(e);
             }
@@ -844,9 +848,16 @@ class SessionFrame extends SvgPlus {
   _removeApp(){
     console.log("remove");
     if (this.squidlyApp instanceof SquidlyApp) this.squidlyApp.close();
+    this.tool_bar.toggleAttribute("app-shown", false);
+    if (this.type == "participant") {
+      console.log("here");
+      this.hideInSideWindow("apps");
+    }
     this.apps_panel.renderApps();
     this.main_app_window.innerHTML = "";
     this.squidlyApp = null;
+    console.log(this.hasContent);
+    this.session_view.toContentView(this.hasContent);
   }
 
 
@@ -863,8 +874,6 @@ class SessionFrame extends SvgPlus {
     console.log("close");
     WebRTC.setSessionFieldState("appInfo", null);
   }
-
-
 
 
 
@@ -900,7 +909,7 @@ class SessionFrame extends SvgPlus {
         }
         window.remove();
       } else {
-        this.showInSideWindow(name);
+        // this.showInSideWindow(name);
       }
     }
   }
@@ -934,7 +943,7 @@ class SessionFrame extends SvgPlus {
       if (e != null && this.hasContent && this.type == "host") {
         try {
           let mouse = new Vector(e);
-          let bbox = this.pdf.displayBBox;
+          let bbox = this.referenceBBox;
           let rel = mouse.sub(bbox[0]).div(bbox[1]);
           let type = this.settings_panel.mouseSelection.type;
           if (this.mouse_change) {
@@ -948,12 +957,10 @@ class SessionFrame extends SvgPlus {
   setCursor(rel) {
     this.cursors.show();
     this.cursor.type = rel.type;
-    let [pos, size] = this.pdf.displayBBox;
+    let [pos, size] = this.referenceBBox;
     let absolute = size.mul(rel).add(pos);
     this.cursor.position = absolute
   }
-
-
 
   onEyePosition(input) {
     let {result} = input;
@@ -978,10 +985,14 @@ class SessionFrame extends SvgPlus {
 
       let [pos, size] = this.bbox;
       let screen = (new Vector(x, y)).mul(size).add(pos);
-      if (this.squidlyApp instanceof SquidlyApp) {
-        this.squidlyApp.eyeData = screen;
+
+      if (this.blob.shown) {
+        if (this.squidlyApp instanceof SquidlyApp) {
+          this.squidlyApp.eyeData = screen;
+        }
+        this.communicationBoard.eyePosition = screen;
       }
-      let [pdfPos, pdfSize] = this.pdf.displayBBox;
+      let [pdfPos, pdfSize] = this.referenceBBox;
       let rel2content = screen.sub(pdfPos).div(pdfSize);
       this.blob.position = screen.sub(this.pointers.bbox[0]);
       WebRTC.sendData({eye: {x: rel2content.x, y: rel2content.y}})
@@ -1034,6 +1045,9 @@ class SessionFrame extends SvgPlus {
     this.tool_bar.updatePDFControls(this.pdf);
   }
 
+  get referenceBBox(){
+    return this.content_view.bbox;
+  }
 
   /**
    * @param {{ calibrate: number; calibrating: any; calibration_results: any; eye: number | undefined; features: any; } | null} data
@@ -1082,7 +1096,7 @@ class SessionFrame extends SvgPlus {
       }
 
       if ("eye" in data) {
-        let [pos, size] = this.pdf.displayBBox;
+        let [pos, size] = this.referenceBBox;
         let rel = (new Vector(data.eye)).mul(size).add(pos);
         this.blob.position = rel.sub(this.pointers.bbox[0]);
       }
@@ -1186,7 +1200,7 @@ class SessionFrame extends SvgPlus {
   }
 
   get hasContent(){
-    return this.pdf.displayType !== null;
+    return this.pdf.displayType !== null || this.squidlyApp instanceof SquidlyApp;
   }
 
   /**
@@ -1224,6 +1238,7 @@ class SessionFrame extends SvgPlus {
       }
     }
   }
+
   get calibration_state_host(){
     return this._c_state;
   }

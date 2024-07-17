@@ -122,7 +122,6 @@ side-window {
     bottom: 0;
     width: calc(var(--side-window-size) - 1em);
     transform: translateX(calc(100% * ( 1 - var(--side-window-percent))));
-
 }
 
 side-window > * {
@@ -141,51 +140,60 @@ side-window > *:first-child:nth-last-child(2) ~ * {
     height: 50%;
 }
 
+session-frame[user-type = "participant"] .icon[type = "close-app"]{
+    display: none;
+}
+apps-panel {
+    --app-width: calc(var(--side-window-size) / 3);
+}
 apps-panel .main-items {
-   
-    padding: 3%;
-    padding-top: 8%;
+    padding: 1em;
 }
 
-/* .icon-container {
-    position: relative;
-    width: 100%;
-}
-.icon-sizer {
-    margin: 100%;
-} */
 apps-panel:not([app]) .title .icon:first-of-type {
     display: none;
 }
 apps-panel .icons-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5em;
-
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
 }
+
+.app-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.app-name {
+    text-transform: capitalize;
+    text-align: left;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.app-details {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.app-description { 
+    width: 100%;
+}
+
 .icon-wrapper {
     aspect-ratio: 1;
     border: 3px solid var(--wc);
     border-radius: 0.5em;
-    width: 50%;
+    width: 40%;
     display: flex;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
-}
-.app-icon {
-    position: relative;
-    display: flex;
-    align-items: center;    
-    justify-content: flex-start;
-    flex-direction: column;
-    height: auto;
     cursor: pointer;
 }
-.icon-name {
-    text-transform: capitalize;
-    text-align: center;
-}
+
+
+/* 
 apps-panel .app-icon:nth-of-type(3n+1) {
     grid-column: 1;
     
@@ -193,7 +201,7 @@ apps-panel .app-icon:nth-of-type(3n+1) {
 apps-panel .app-icon:nth-of-type(3n+2) {
     grid-column: 2;
     
-}
+} */
 
 
 .title {
@@ -436,7 +444,7 @@ file-load-icon .i-fill {
     --ic2: #ebd7ff;
 }
 
-* > svg > mask .i-fill.mask-bg,  {fill:white;}
+* > svg > mask .i-fill.mask-bg {fill:white;}
 
 * > svg > mask .i-fill.mask-rm {fill:black;}
 
@@ -606,22 +614,26 @@ tool-bar {
     font-size: 0.8em;
   }
 
-  tool-bar .pdf-count {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--ic2);
-  }
 
-    tool-bar[type = "participant"] .icon[type = "file"],
-    tool-bar[type = "participant"] .group[type = "pdf"]{
-        display: none;
-    }
 
-    tool-bar .icon[type = "audio"]{
-        font-size: 0.78em;
-    }
+
+tool-bar .pdf-count {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: var(--ic2);
+}
+
+tool-bar:not([app-shown])[type = "participant"] .icon[type = "apps"],
+tool-bar[type = "participant"] .icon[type = "file"],
+tool-bar[type = "participant"] .group[type = "pdf"]{
+    display: none;
+}
+
+tool-bar .icon[type = "audio"]{
+    font-size: 0.78em;
+}
 
 /* Feedback Window */
 feedback-window {
@@ -631,6 +643,7 @@ feedback-window {
     display: flex;
     gap: var(--bro);
     flex-direction: column;
+    z-index: 10000;
 }
 feedback-frame {
     border-radius: var(--br);
@@ -848,3 +861,87 @@ pdf-viewer {
         transform: translateX(100%);
     }
     
+
+    /*  */
+
+    communication-board {
+        --slide: 0;
+    }
+    .coms-icon {
+        position: absolute;
+        top: 0;
+        left: calc(var(--slide) * (90% + 1em));
+        background-color: var(--wc);
+        border-right: 3px solid var(--tbc);
+        border-bottom: 3px solid var(--tbc);
+        color: white;
+        border-radius: 0 0 1em 0;
+        z-index: 1002;
+        padding: 1em;
+    }
+
+    .coms-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: calc(var(--slide) * 90%);
+        background-color: var(--tbc);
+        z-index: 1002;
+        border-radius: 0 0 1em 0;
+        overflow: hidden;
+        display: grid;
+        gap: 0.5em;
+        padding: calc(var(--slide) * 0.5em);
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+    }
+
+    communication-icon {
+        background: white;
+        border-radius: 0.5em;
+        display: flex;
+        justify-content: center;
+        position: relative;
+    }
+
+    communication-icon:hover > div,
+    communication-icon[hover] > div
+     {
+        backdrop-filter: brightness(0.85) saturate(1.5);
+    }
+    communication-icon > div{
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        gap: 0.5em;
+        align-items: center;
+        padding: 0.5em;
+    }
+    communication-icon .image {
+        height: 100%;
+        position: relative;
+    }
+
+    communication-icon svg {
+        height: 100%;
+    }
+
+    communication-icon img {
+        height: 100%;
+    }
+
+    communication-icon .load {
+        fill: none;
+        stroke: #fffa;
+        stroke-width: 4;
+        stroke-linecap: round;
+    }
+
+    .load {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 30%;
+    }

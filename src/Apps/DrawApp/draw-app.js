@@ -1,5 +1,5 @@
 import { SvgPlus, Vector } from "../../SvgPlus/4.js";
-import { SvgResize } from "../../Utilities/basic-ui.js";
+import { SvgResize, POINTERS } from "../../Utilities/basic-ui.js";
 import { SquidlyApp } from "../app-class.js";
 import { ColorPicker } from "./color-picker.js"
 import {simplifyPoints} from "./simplify.js"
@@ -49,6 +49,7 @@ function makeSmoothPath(points, t1 = 1, t2 = 0.5, t3 = 0.5) {
 let lastPoints = null
 function points2Dpath(points) {
 
+    // let t0 = performance.now();
     let dpath = points.length == 1 ? `M${points[0]}L${points[0]}` : `M${points.join("L")}`
 
     if (points.length > 5) {
@@ -62,6 +63,7 @@ function points2Dpath(points) {
         }
     }
 
+    // console.log(`n = ${points.length}: time ${performance.now() - t0}ms`)
    
     return dpath;
 }
@@ -78,6 +80,7 @@ function encodeSVG (data) {
   // allows to keep result code readable
   return data.replace(symbols, encodeURIComponent);
 }
+
 function erasor(w = 20.02, h = 17.1){
     return `
     <svg width = "${w}" height = "${h}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.01 8.55">
@@ -287,7 +290,8 @@ const iconstyle = {
     "align-items": "center",
     "justify-items": "center",
     "border-radius": "0.2em",
-    padding: "0.1em"
+    padding: "0.1em",
+    "font-size": "2em"
 }
 class DrawingTools extends SvgPlus {
     constructor(){
@@ -321,8 +325,20 @@ class DrawingTools extends SvgPlus {
                         this.selectTool("erasor")
                     }
                 }
+            }),
+            mouse: icons.createChild("div", {
+                class: "icon",
+                styles: iconstyle,
+                events: {
+                    click: () => {
+                        this.selectTool("mouse")
+                    }
+                }
             })
         }
+        let i = this.tools.mouse.createChild("svg", {viewBox: "-9 -3 30 20"}).createChild(POINTERS.cursor);
+        i.shown = true;
+
 
         this.selectTool("pen")
     }
@@ -331,6 +347,10 @@ class DrawingTools extends SvgPlus {
     selectTool(tool) {
         for (let key in this.tools) {
             this.tools[key].styles={background: tool == key ? "darkgray" : null}
+        }
+        if (this.drawingWindow) {
+            console.log(this.drawingWindow);
+            this.drawingWindow.inactive = tool == "mouse";
         }
         this.tool = tool;
     }
@@ -359,7 +379,40 @@ class PenPath extends SvgPlus {
             "stroke-width": 1,
             d: ""
         }
+        this.ewa_smoothing = 0.2;
+        this.ewa = null;
+        this.points = []
+        this.si = 0;
+        this.curves = [];
     }
+
+    /** @param {Vector} v */
+    addPoint(v) {
+        let {ewa, ewa_smoothing, points} = this;
+
+        if (ewa == null) ewa = v;
+        v = v.mul(ewa_smoothing).add(ewa.mul(1-ewa_smoothing));
+        this.ewa = v;
+
+        points.push(v);
+        console.log(points.length);
+        this.d = points2Dpath(points);
+    }
+
+    // _update_path(){
+    //     let r = (n) => n.map(v => Math.round(v));
+        
+
+        
+    //     if (points.length > 5) {
+    //         let new_curves = fitCurve(points.map(v => [v.x, v.y]), 1);
+            
+    //         let dpath = points.length == 1 ? `M${points[0]}L${points[0]}` : `M${points.join("L")}`
+    //     } else {
+    //         points = r(points);
+    //         let dpath = points.length == 1 ? `M${points[0]}L${points[0]}` : `M${points.join("L")}`
+    //     }
+    // }
 
 
     set d(value) {
@@ -373,9 +426,12 @@ class PenPath extends SvgPlus {
         }
         this.props = this._value;
     }
+
     get value(){
         return this._value;
     }
+
+
 }
 
 class DrawingWindow extends SvgPlus {
@@ -435,12 +491,17 @@ class DrawingWindow extends SvgPlus {
         }
     }
 
+    set inactive(value){
+        this.styles = {"pointer-events": value === true ? "none" : null}
+    }
+
 
     /** @param {MouseEvent} e */
     removePathAt(e) {
         let v = new Vector(e)
         let pos = this.svg.bbox[0];
         v = v.sub(pos);
+
         for (let path of this.svg.querySelectorAll("path")) {
             if(path.isVectorInStroke(v)) {
                 path.remove();
@@ -456,34 +517,24 @@ class DrawingWindow extends SvgPlus {
         let v = new Vector(e)
         let pos = this.svg.bbox[0];
         v = v.sub(pos);
-        this.points = [v];
-        this.ewa = null;
+
         this.path = svg.createChild(PenPath, {
             id: app.push("paths"),
-        })
+        });
         this.path.value = this.getPathStyle();
-        this.path.d = `M${v}L${v}`
+        this.path.addPoint(v);
         this.changed = true;
     }
 
-
+    /** @param {MouseEvent} e */
     updatePath(e) {
-        let {ewa, path, points, ewa_smoothing} = this;
-        if (Array.isArray(points)) {
-            let v = new Vector(e);
-            let pos = this.svg.bbox[0];
-            v = v.sub(pos);
-    
-            if (ewa == null) ewa = v;
-            v = v.mul(ewa_smoothing).add(ewa.mul(1-ewa_smoothing));
-            this.ewa = v;
-    
-            points.push(v);
-    
-            path.d = points2Dpath(points),
-    
-            this.changed = true;
-        }
+        let {points} = this;
+        let v = new Vector(e);
+        let pos = this.svg.bbox[0];
+        v = v.sub(pos);
+
+        this.path.addPoint(v);
+        this.changed = true;
     }
 
 
@@ -508,6 +559,7 @@ class DrawingWindow extends SvgPlus {
 
 
         svg.addEventListener("mousedown", (e) => {
+            this.styles = {"pointer-events": null}
             switch (app.tool) {
                 case "pen":
                     this.makePath(e);
@@ -516,6 +568,7 @@ class DrawingWindow extends SvgPlus {
                 case "erasor": 
                     this.removePathAt(e);
                     break;
+
             }
         })
         
@@ -529,6 +582,7 @@ class DrawingWindow extends SvgPlus {
                 case "erasor": 
                     svg.styles = {"cursor": erasorCursor()}
                     if (e.buttons == 1) this.removePathAt(e)
+                    break;
            } 
         });
 
@@ -602,17 +656,17 @@ export default class DrawingApp extends SquidlyApp {
         super(sender, initialiser);
         console.log(this.set);
         this.init = true;
-        this.drawingWindow = new DrawingWindow(sender, this);
+        this.drawingWindow = new DrawingWindow(true, this);
         // this.drawingWindow.data = initData;
-        if (true) {
-            this.drawingTools = new DrawingTools();
-            this.drawingWindow.editable = true;
-            this.drawingWindow.getPathStyle = () => {return this.drawingTools.penStyles}
+        this.drawingTools = new DrawingTools();
+        this.drawingWindow.editable = true;
+        this.drawingTools.drawingWindow = this.drawingWindow;
+        this.drawingWindow.getPathStyle = () => {return this.drawingTools.penStyles}
             // this.drawingWindow.addEventListener("change", (e) => {
             //     let path = e.path;
             //     this.set("paths/"+path.id, path.outerHTML)
             // })
-        }
+        // }
 
         this.close = () => {
             console.log("closing draw");
@@ -643,6 +697,10 @@ export default class DrawingApp extends SquidlyApp {
     }
 
 
+    static get description(){
+        return "Add annotation during your video calls."
+    }
+
     static get name(){
         return "draw"
     }
@@ -653,7 +711,7 @@ export default class DrawingApp extends SquidlyApp {
 
     static get appIcon() {
         let svg = new SvgPlus("svg");
-        svg.props = {viewBox: "0 0 10.86 5.45"}
+        svg.props = {viewBox: "-2 0 14.86 5.45"}
         svg.innerHTML = `<path class="cls-1" d="m.5,5.45c-.11,0-.23-.04-.32-.12-.21-.18-.24-.49-.06-.7.42-.49.64-1.33.85-2.14C1.25,1.4,1.52.36,2.35.07c.52-.19,1.14,0,1.87.54.63.47,1.18.98,1.65,1.43.84.79,1.5,1.42,2.16,1.37.54-.04,1.17-.53,1.93-1.5.17-.22.48-.26.7-.08.22.17.25.48.08.7-.96,1.22-1.8,1.82-2.64,1.88-1.1.08-1.94-.72-2.92-1.64-.48-.45-.98-.92-1.56-1.36-.6-.45-.86-.43-.95-.4-.32.11-.56,1.01-.75,1.73-.23.88-.49,1.87-1.05,2.53-.1.12-.24.18-.38.18Z"/>`
         return svg;
     }
