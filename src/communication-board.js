@@ -17,7 +17,7 @@ const CommunicationGrid = [
     {
       name: "More",
       color: "rgb(249 226 210)",
-      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_More.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_more.svg"
     },
     
     
@@ -48,7 +48,7 @@ const CommunicationGrid = [
     {
       name: "Play",
       color: "#ebeeff",
-      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Play.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_play.svg"
     },
     {
       name: "Repeat",

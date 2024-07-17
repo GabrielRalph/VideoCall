@@ -734,6 +734,7 @@ class SessionFrame extends SvgPlus {
     this.apps_panel.close.onclick = () =>  this.hideInSideWindow("apps");
     this.settings_panel = new SettingsPanel();
     this.settings_panel.close.onclick = () => this.hideInSideWindow("settings");
+    this.messages.close.onclick = () => this.hideInSideWindow("settings");
     this.side_window_items = {
       settings: this.settings_panel,
       apps: this.apps_panel,
