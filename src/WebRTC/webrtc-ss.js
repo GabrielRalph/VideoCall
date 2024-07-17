@@ -30,7 +30,7 @@ export class WebRTCSS {
                 }
             }
     
-            console.log(stream)
+            // console.log(stream)
             if (stream !== null) {
                 for (const track of stream.getTracks()) {
                     pc.addTrack(track, stream);
@@ -39,7 +39,7 @@ export class WebRTCSS {
     
             this.stream = stream;
     
-            console.log("buffer", this._buffer);
+            // console.log("buffer", this._buffer);
             while (this._buffer.length != 0) {
                 this.onSignal(this._buffer.shift());
             }
@@ -52,7 +52,7 @@ export class WebRTCSS {
     onStream(stream) {}
 
     async onSignal({ description, candidate }) {
-        console.log("signal");
+        // console.log("signal");
         if (this.pc instanceof RTCPeerConnection) {
             let {stream, pc, makingOffer} = this;
             try {
@@ -80,7 +80,7 @@ export class WebRTCSS {
                         }
                     }
                 } else if (candidate) {
-                    console.log("candidate in", candidate);
+                    // console.log("candidate in", candidate);
     
                     try {
                         await pc.addIceCandidate(candidate);
@@ -94,13 +94,13 @@ export class WebRTCSS {
             } catch (e) {
             }
         } else {
-            console.log("buffer", this._buffer);
+            // console.log("buffer", this._buffer);
             this._buffer.push({candidate, description});
         }
     }
       
     onicecandidate(data) {
-        console.log("candidate out", data);
+        // console.log("candidate out", data);
         if (data.candidate) {
             this.send({candidate: data.candidate.toJSON()});
         }
@@ -207,7 +207,7 @@ export class WebRTCSS {
             if (this.pc instanceof RTCPeerConnection) {
                 const [videoTrack] = stream.getVideoTracks();
                 const sender = this.pc.getSenders().find((s) => s.track.kind === videoTrack.kind);
-                console.log("Found sender:", sender);
+                // console.log("Found sender:", sender);
                 sender.replaceTrack(videoTrack);
             }
 

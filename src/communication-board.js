@@ -7,53 +7,53 @@ const CommunicationGrid = [
     {
       name: "Like",
       color: "#f9eed2",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Like.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Like.svg"
     },
     {
       name: "Dislike",
       color: "#f9eed2",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Dislike.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Dislike.svg"
     },
     {
       name: "More",
       color: "rgb(249 226 210)",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_More.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_More.svg"
     },
     
     
     {
       name: "You",
       color: "#c8e2c8",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_You.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_You.svg"
     },
     {
       color: "#c8e2c8",
       name: "I",
       utterance: "I...",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_I.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_I.svg"
     },
   
     {
       name: "Help",
       color: "#fef",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Help.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Help.svg"
     },
     
   
     {
       name: "Stop",
       color: "#ebeeff",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Stop.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Stop.svg"
     },
     {
       name: "Play",
       color: "#ebeeff",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Play.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Play.svg"
     },
     {
       name: "Repeat",
       color: "#ebeeff",
-      img: "https://session-app.squidly.com.au/assets/comGrid/r1_Repeat.svg"
+      img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Repeat.svg"
   
     },
     
@@ -78,8 +78,9 @@ const CommunicationGrid = [
       this.progress = 0;
   
       this.update();
-  
     }
+
+    onclick(){this.speak()}
   
     async update() {
       while(true) {
@@ -107,7 +108,6 @@ const CommunicationGrid = [
       if (num > 0 && num < 1) {
         this.path.props = {d: `M${p1}A5,5,1,${angle > Math.PI ? 0 : 1},0,${p2}`};
       } else if (num == 1) {
-        console.log("here");
         this.path.props = {d: `M0,5A5,5,0,0,0,0,-5A5,5,0,0,0,0,5`}
       }else {
         this.path.props = {d: ""};
@@ -211,7 +211,6 @@ const CommunicationGrid = [
       if (val > 1) val = 1;
       if (val < 0) val = 0;
   
-      console.log(val);
       if (this.sprogress < 1 && val == 1) {
         this.show(!this.shown);
       }

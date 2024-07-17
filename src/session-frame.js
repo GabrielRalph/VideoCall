@@ -766,6 +766,8 @@ class SessionFrame extends SvgPlus {
       this.settings_panel.updateDevices();
       this.showInSideWindow("settings")
     }
+    this.tool_bar.msg.onclick = () => this.showInSideWindow("messages");
+
     this.tool_bar.screenShare.onclick = () => this.shareScreen();
 
 
@@ -918,6 +920,9 @@ class SessionFrame extends SvgPlus {
     if (name in this.side_window_items) {
       let window = this.side_window_items[name];
       if (!this.side_window.contains(window)) {
+        if (this.side_window.children.length == 2) {
+          this.side_window.children[0].remove();
+        }
         this.side_window.appendChild(window);
         if (!this._side_open) {
           this.toggleSideWindow(true);
