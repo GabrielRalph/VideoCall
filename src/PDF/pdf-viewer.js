@@ -82,8 +82,7 @@ class PdfViewer extends SvgPlus {
     this.loader = loader;
 
     this.innerHTML = "";
-    this.image = this.createChild("img", {
-      'draggable': 'false',
+    this.image = this.createChild("div", {class: "image",
       events: {
         'dragstart': e => e.preventDefault()
       }
@@ -290,7 +289,7 @@ class PdfViewer extends SvgPlus {
         } else if (type == "stream") {
           // this.video.srcObject = url;
         } else {
-          this.image.props = {src: url};
+          this.image.styles = {"background-image": `url(${url})`};
           this._url = url;
         }
       } else if (page != this.page) {
