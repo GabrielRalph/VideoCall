@@ -434,7 +434,7 @@ const CommunicationGrid = [
   
     show(bool){
       console.log("show", bool);
-      this._shown = bool;
+      this._show(bool);
       this.set("shown", bool);
     }
     _show(bool) {
