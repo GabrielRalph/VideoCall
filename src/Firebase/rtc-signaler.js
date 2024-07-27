@@ -310,9 +310,10 @@ export function getUserType(){
  * @param {Object} app
  */
 export function addAppDatabase(appName, app = {}) {
-  console.log(appName, app);
   if (typeof appName === "string" && typeof app === "object" && app !== null) {
-    if (getKey() != null && getDB() != null) {
+    // console.log(getDB(), appName,  app);
+    // if (getDB() != null) {
+
       let appRef = (path) => {
         let r = getSessionRef(getKey(), "app-" + appName);
         if (typeof path === "string") r = child(r, path);
@@ -324,7 +325,7 @@ export function addAppDatabase(appName, app = {}) {
       let funcs = {
         get: async (path) => (await get(appRef(path))).val(),
         set: (path, value) => set(appRef(path), value),
-        push: (path, value) => {
+        push: (path) => {
           console.log("here");
           let pr = push(appRef(path));
           return pr.key;
@@ -337,6 +338,7 @@ export function addAppDatabase(appName, app = {}) {
           }
         },
         onChildAdded: (path, cb) => {
+          console.log(appRef(path));
           if (cb instanceof Function) {
             listeners.push(onChildAdded(appRef(path), (sc, key) => cb(sc.val(), sc.key, key) ))
           } else {
@@ -371,5 +373,5 @@ export function addAppDatabase(appName, app = {}) {
 
       }
     }
-  }
+  // }
 }

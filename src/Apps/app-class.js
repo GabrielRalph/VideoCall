@@ -35,7 +35,7 @@ export class SquidlyApp{
      * @override
      * @param {Vector} eyeData
      */
-    setEyeData(eyeData){
+    set eyeData(eyeData){
     }
 
   

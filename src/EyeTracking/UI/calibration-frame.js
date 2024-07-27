@@ -12,6 +12,21 @@ async function waitForClick() {
 		window.addEventListener("click", end);
 	});
 }
+
+const defaultCalibration = {
+scan: {
+	time: 5,
+	size: 7,
+	on: true,
+},
+grid: {
+	time: 4,
+	size: 5,
+	on: false
+}
+}
+
+  
 class CalibrationFrame extends HideShow {
 	constructor(el = "calibration-frame") {
 		super(el);
@@ -100,6 +115,7 @@ class CalibrationFrame extends HideShow {
 		await this.showMessageCountDown("Focus on the red dot<br/>as it appears on the screen.<br/>$$");
 		await this.calibrate_points(points, counts);
 	}
+
 	async calibrate_points(points, counts) {
 		let { pointer } = this;
 		for (let p of points) {
@@ -115,7 +131,8 @@ class CalibrationFrame extends HideShow {
 			await pointer.hide();
 		}
 	}
-	async calibrate_scan(divs = 5, max_time = 3000) {
+	
+	async calibrate_scan(divs = 5, max_time = 3) {
 		let { pointer } = this;
 		let bbox = this.getBoundingClientRect();
 		let [t1, t2] = [max_time, max_time];
@@ -131,7 +148,7 @@ class CalibrationFrame extends HideShow {
 				pointer.position = left;
 				await pointer.show();
 				this.recording = true;
-				await pointer.moveTo(right, time);
+				await pointer.moveTo(right, time * 1000);
 				this.recording = false;
 				await pointer.hide();
 			}
@@ -154,30 +171,13 @@ class CalibrationFrame extends HideShow {
 		await this.message.hide();
 	}
 
-	async calibrate_rradjusted() {
-		await this.showMessageCountDown("Focus on the red dot<br/>as it moves along the screen.<br/>$$");
-		this.sample_method = "moving";
-		// await this.calibrate_grid(4, 2);
-		await this.calibrate_scan(7, 5000);
-		// await this.showMessageCountDown("This time move your <br/> head around and <br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
-		// await this.calibrate_grid(2, 4);
-		// this.sample_method = "moving";
-		// await this.calibrate_scan(4, 4000);
-	}
-	
-	async calibrate_rrcombined() {
-		await this.showMessageCountDown("Move your <br/> head around and <br/>focus on the red dot<br/>as it moves along the screen.<br/>$$");
-		this.sample_method = "moving";
-		await this.calibrate_scan(5, 3000);
-	}
-
-	async calibrate() {
-		await this.calibrate_rradjusted();
+	async calibrate(params = defaultCalibration) {
+		if (params.scan.on) await this.calibrate_scan(params.scan.size, params.scan.time);
+		if (params.grid.on) await this.calibrate_grid(params.grid.size, params.grid.time);
 		await this.showMessage("Calibrating eye tracking...");
 		let error = Algorithm.trainModel();
 		this.std = error.validation.std.norm();
 		await this.hideMessage();
-		
 	}
 
 	async show_results(std = this.std){

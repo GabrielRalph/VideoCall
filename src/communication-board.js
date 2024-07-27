@@ -1,7 +1,138 @@
 import { SvgPlus, Vector } from "./SvgPlus/4.js";
-import {HideShow} from "./Utilities/basic-ui.js"
+import {HideShow, Slider} from "./Utilities/basic-ui.js"
 import {delay} from "./Utilities/usefull-funcs.js"
 import {Icons} from "./Utilities/icons.js"
+
+import { addAppDatabase, getUserType, addStateListener} from "./WebRTC/webrtc.js"
+
+import {
+  BlobReader,
+  BlobWriter,
+  TextReader,
+  TextWriter,
+  ZipReader,
+  ZipWriter,
+} from "https://deno.land/x/zipjs/index.js";
+
+
+const GridTemplate = {
+  color: (val) => {
+    if (!val) val = "white";
+    return val;
+  },
+  name: (val) => {
+    if (!val) val = "empty"
+    return val;
+  },
+  filename: (val, el) => {
+    if (!val) val = el.name;
+    return val;
+  },
+  utterance: (val, el) => {
+    if (!val) val = el.name;
+    return val;
+  }
+}
+function splitRow(row) {
+  let si = 0;
+  let ei = 0;
+  let inQuote = false;
+  let nrow = [];
+  for (let c of row) {
+    if (!inQuote && c == ',') {
+      nrow.push(row.slice(si, ei))
+      ei++;
+      si = ei;
+    } else if (c == '"') {
+      inQuote = !inQuote;
+      ei++;
+    } else {
+      ei++;
+    }
+  }
+  return nrow;
+}
+function parseCSV(csv) {
+  let data = []
+  for (let row of csv.split(/\r*\n\r*/)) {
+    
+      if (row != '') {
+        data.push(splitRow(row))
+      }
+  }
+  let data2 = []
+  for (let i = 1; i < data.length; i++) {
+      let entry = {}
+      for (let j = 0; j < data[0].length; j++) {
+          entry[data[0][j].toLowerCase()] = data[i][j]
+      }
+      data2.push(entry)
+  }
+  return data2
+}
+function parseGridSpecs(csv) {
+  let specs0 = parseCSV(csv);
+  return specs0.map(el => {
+    let nel = {};
+    for (let key in GridTemplate) {
+      nel[key] = GridTemplate[key](el[key], el)
+    }
+    return nel;
+  });
+}
+function toDataURL(blob){
+  return new Promise((resolve, reject) => {
+    var a = new FileReader();
+    a.onload = function(e) {resolve(e.target.result);}
+    a.readAsDataURL(blob);
+  })
+}
+async function blob2grid(blob) {
+  const zipFileReader = new BlobReader(blob);
+  
+  const zipReader = new ZipReader(zipFileReader);
+  const entries = await zipReader.getEntries()
+  const csvFile = entries.filter((a) => a.filename.endsWith(".csv"))[0];
+  const csvText = await csvFile.getData(new TextWriter());
+  let specs = parseGridSpecs(csvText)
+  for (let entry of specs) {
+    let img = entries.filter(b => b.filename.startsWith(entry.filename))[0];
+    if (img) {
+      let ftype = img.filename.split('.').pop();
+      if (ftype == "svg") ftype += '+xml'
+      let data = await img.getData(new BlobWriter('image/'+ftype));
+      entry.img = await toDataURL(data);
+    }
+  }
+
+  await zipReader.close();
+  return specs
+}
+
+fetchGrid();
+async function fetchGrid(url) {
+  let res = await fetch("../assets/ComGrid/GRID2/Archive.zip");
+  let blob = await res.blob();
+  return await blob2grid(blob);
+}
+
+
+async function openGrid(){
+  let file = await new Promise((resolve, reject) => {
+    let input = new SvgPlus("input");
+    input.props = {
+      "type": "file",
+      events: {
+        input: async (e) => {
+          resolve(input.files[0]);
+        }
+      }
+    }
+    input.click();
+  })
+  return await blob2grid(file);
+}
+
 
 const CommunicationGrid = [
     {
@@ -19,8 +150,6 @@ const CommunicationGrid = [
       color: "rgb(249 226 210)",
       img: "https://session-app.squidly.com.au/assets/ComGrid/r1_more.svg"
     },
-    
-    
     {
       name: "You",
       color: "#c8e2c8",
@@ -32,14 +161,11 @@ const CommunicationGrid = [
       utterance: "I...",
       img: "https://session-app.squidly.com.au/assets/ComGrid/r1_I.svg"
     },
-  
     {
       name: "Help",
       color: "#fef",
       img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Help.svg"
     },
-    
-  
     {
       name: "Stop",
       color: "#ebeeff",
@@ -54,47 +180,65 @@ const CommunicationGrid = [
       name: "Repeat",
       color: "#ebeeff",
       img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Repeat.svg"
-  
     },
-    
   ]
   
   class CommunicationIcon extends SvgPlus {
-    constructor(icon){
+    constructor(icon, board){
       super('communication-icon');
+
+      this.board = board;
+
       this.name = icon.name;
       this.utteranceText = icon.utterance ? icon.utterance : icon.name;
       let rel = this.createChild("div");
       this.styles = {
         background: icon.color ? icon.color : ""
       }
+
       rel.createChild("div", {content: icon.name})
       if (icon.img) {
-        rel.createChild("div", {class: "image"}).createChild("img", {src: icon.img})
+        rel.createChild("div", {class: "image", styles: {"background-image": `url(${icon.img})`}});
       }
   
       this.svg = this.createChild("svg", {class: "load", viewBox: "-7 -7 14 14"});
       this.path = this.svg.createChild("path");
       this.progress = 0;
-  
       this.update();
     }
+
+
+    get dwellTime(){
+      return this.board.dwellTime;
+    }
+
+    get dwellRelease(){
+      return this.board.dwellRelease;
+    }
+    
 
     onclick(){this.speak()}
   
     async update() {
+      let lastt = performance.now();
       while(true) {
         await delay();
-        if (!this.hasAttribute("hover")) {
-          this.progress -= 0.02;
-        }
+
+          let t = performance.now();
+          let dt = (t - lastt) / 1000; // seconds
+          let dp = this.over ? dt / this.dwellTime : -dt / this.dwellRelease;
+          
+          this.progress += dp;
+          lastt = t;
       }
     }
-  
-    onOver(){
-      this.progress += 0.02;
-      this.over = true;
+
+
+    set hover(bool){
+      this.over = bool
+      this.toggleAttribute("hover", bool);
     }
+   
   
     set progress(num) {
       if (num > 1) num = 1;
@@ -118,16 +262,29 @@ const CommunicationGrid = [
       return this._progress;
     }
   
-    speak(){
-      let sync = window.speechSynthesis;
-      const utterThis = new SpeechSynthesisUtterance(this.utteranceText);
-      utterThis.voice = sync.getVoices()[0];
-      sync.speak(utterThis);
+    async speak(){
+      if (!this.speaking) {
+        this.speaking = true;
+        let sync = window.speechSynthesis;
+        const utterThis = new SpeechSynthesisUtterance(this.utteranceText);
+        utterThis.voice = sync.getVoices()[0];
+        await new Promise((resolve, reject) => {
+          utterThis.onend = resolve
+          sync.speak(utterThis);
+        })
+        this.speaking = false;
+      }
     }
   }
   export class CommunicationBoard extends SvgPlus {
     constructor(){
       super('communication-board');
+      this.events = {
+        // contextmenu: (e) => {
+        //   e.preventDefault();
+        //   this.openGrid();
+        // }
+      }
       this.icon = this.createChild(HideShow, {
         class: "coms-icon icon",
         content: Icons.arrow,
@@ -153,17 +310,67 @@ const CommunicationGrid = [
       this.renderGrid();
       this.sprogress = 0;
       this.updateProgress();
+
+      this._dwellTime = 0.7;
+      this._dwellRelease = 1;
+
+      addAppDatabase("com-board", this);
+      addStateListener(this);
+    }
+
+    initialise(){
+      if (!this.init) {
+        this.init = true;
+        console.log("init");
+        this.onValue("shown", (shown) => {
+          this._show(shown);
+        });
+
+        this.onValue("dwellTime", (time) => {
+          if (time != null) {
+            this._dwellTime = time;
+            this.setDwellTime(time);
+          }
+        });
+        this.onValue("dwellRelease", (time) => {
+          if (time != null) {
+            this._dwellRelease = time;
+          }
+        })
+      }
+    }
+
+
+    set dwellTime(num){
+      this.set("dwellTime", num);
+      this._dwellTime = num;
+    }
+    get dwellTime(){
+      return this._dwellTime
+    }
+
+    set dwellRelease(num){
+      this.set("dwellRelease", num);
+      this._dwellRelease = num;
+    }
+    get dwellRelease(){
+      return this._dwellRelease;
+    }
+
+    set state(state){
+      if (state) {
+        this.initialise()
+      }
     }
   
     /** @param {Vector} e */
     set eyePosition(e) {
       if (this.shown) {
         let item = this.getItemAtVector(e);
-        for (let i of this.content.children) i.toggleAttribute("hover", false);
+        for (let i of this.content.children) i.hover = false;
         
         if (item != null) {
-          item.toggleAttribute("hover", true);
-          item.onOver();
+          item.hover = true;
         }
       } 
       this.onVector(e, true);
@@ -179,21 +386,58 @@ const CommunicationGrid = [
       }
       return res;
     }
+
+
+     makeSettings(){
+      let dwell = new SvgPlus("div");
+      dwell.createChild("b", {content: "Dwell Time"})
+      let r = dwell.createChild("div", {styles: {display: "flex", "align-items": "center", "flex-direction": "row-reverse"}})
+      let ts = r.createChild("span", {content: "0.7s", styles: {"user-select": "none", width: "2em"}});
+      let dwellTime = r.createChild(Slider, {
+        events: {
+          change: () => {
+            console.log(dwellTime.value);
+            let t = dwellTime.value * 2.7 + 0.3;
+            this.dwellTime = t
+            ts.innerHTML = Math.round(t*10)/10 + "s";
+          }
+        }
+      });
+
+      this.setDwellTime = (t) => {
+        dwellTime.value = (t-0.3)/2.7;
+        ts.innerHTML = Math.round(t*10)/10 + "s";
+      }
+
+      this.setDwellTime(0.7);
+
+      return dwell;
+     }
+
+    
+    async openGrid(){
+      let grid = await openGrid();
+      await this.renderGrid(grid)
+      
+    }
   
-  
-    renderGrid(grid = CommunicationGrid, size = 3){
+    async renderGrid(grid = CommunicationGrid, size = 3){
       this.content.innerHTML = "";
       grid.map((icon, i) => {
         this.content.createChild(CommunicationIcon, {
           styles: {
             "grid-column": 1+i%size,
           }
-        }, icon)
+        }, icon, this)
       })
     }
   
-  
-    show(bool) {
+    show(bool){
+      console.log("show", bool);
+      this._shown = bool;
+      this.set("shown", bool);
+    }
+    _show(bool) {
       this._shown = bool;
       this.waveTransition((t) => {
         this.styles = {"--slide": t}
