@@ -438,12 +438,13 @@ const CommunicationGrid = [
       this.set("shown", bool);
     }
     _show(bool) {
-      this._shown = bool;
-      this.waveTransition((t) => {
-        this.styles = {"--slide": t}
-      }, 350, bool);
-      this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
-  
+      if (bool != this.shown) {
+        this._shown = bool;
+        this.waveTransition((t) => {
+          this.styles = {"--slide": t}
+        }, 350, bool);
+        this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
+      }
     }
     get shown(){
       return this._shown;
