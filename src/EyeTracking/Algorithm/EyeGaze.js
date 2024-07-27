@@ -41,7 +41,6 @@ let GetScreenPosition = null;
 function sample(features) {
   if (is_sampling && GetScreenPosition instanceof Function) {
     features.method = MethodID;
-    // console.log(features);
     SampleData.push({X: features, y: GetScreenPosition()})
   }
 }
@@ -90,12 +89,8 @@ function predictScreenPosition(X, kfilter = true) {
 }
 
 export function startSampling(methodID){
-  if (methodID in SampleMethods) {
     MethodID = methodID;
     is_sampling = true;
-  } else {
-    throw "not a valid sampling method"
-  }
 }
 export function stopSampling(){
   is_sampling = false;
