@@ -1032,3 +1032,7 @@ pdf-viewer {
     calibration-frame {
         z-index: 2000;
     }
+
+    white-board {
+        font-size: 0.9em;
+    }
