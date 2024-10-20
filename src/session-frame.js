@@ -12,7 +12,7 @@ import { PdfViewer } from "./PDF/pdf-viewer.js"
 import { getApps, SquidlyApp } from "./Apps/app-library.js"
 import { CommunicationBoard } from "./communication-board.js"
 import { Messages } from "./messages.js"
-import {WhiteboardFirebaseFrame, WhiteBoard} from "https://whiteboard.w4v.es/whiteboard-firebase.js"
+import {WhiteboardFirebaseFrame, WhiteBoard} from "./whiteboard-firebase.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
@@ -670,7 +670,9 @@ class SessionView extends HideShow {
 
   inititialiseWhiteBoard(){
     if (!this.whiteboard._fb) {
+      console.log("initialiseing white board");
       let fb = new WhiteboardFirebaseFrame("whiteboard", this.whiteboard);
+      console.log(fb.appRef(null));
       this.whiteboard.svgView.viewBoxX.displayPixelSize();
       this.whiteboard._fb = fb;
     }
