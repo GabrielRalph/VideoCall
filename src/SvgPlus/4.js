@@ -368,7 +368,7 @@ class SvgPlus extends Root{
     }
 
     for (let key in events) {
-      this.addEventListener(key, events[key])
+      this.addEventListener(key, (e) => events[key](e))
     }
   }
 

@@ -12,11 +12,14 @@ import { PdfViewer } from "./PDF/pdf-viewer.js"
 import { getApps, SquidlyApp } from "./Apps/app-library.js"
 import { CommunicationBoard } from "./communication-board.js"
 import { Messages } from "./messages.js"
+import {WhiteboardFirebaseFrame, WhiteBoard} from "https://whiteboard.w4v.es/whiteboard-firebase.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
 
 console.log(Apps);
+
+console.log(WhiteBoard);
 
 
 function getQueryKey(string = window.location.search) {
@@ -553,7 +556,13 @@ class SessionView extends HideShow {
     this.widget.shown = true;
     this.feedback_window = mainContentView.createChild(FeedbackWindow);
     this.feedback_window.align = "center";
+
     this.main_app_window = mainContentView.createChild("div", { class: "main-app-window" });
+
+    let wb = new WhiteBoard();
+    this.whiteboard = wb
+    mainContentView.appendChild(wb)
+    
 
     contentView.createChild("div", { class: "overlay top" })
     contentView.createChild("div", { class: "overlay bottom" })
@@ -654,6 +663,14 @@ class SessionView extends HideShow {
     //   this.tool_bar.top = this.widget.offsetParent != null && ypos > 0.5;
 
     // });
+  }
+
+  inititialiseWhiteBoard(){
+    if (!this.whiteboard._fb) {
+      let fb = new WhiteboardFirebaseFrame("whiteboard", this.whiteboard);
+      this.whiteboard.svgView.viewBoxX.displayPixelSize();
+      this.whiteboard._fb = fb;
+    }
   }
 
   async toContentView(bool = true) {
@@ -1142,8 +1159,7 @@ class SessionFrame extends SvgPlus {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
         if (state.status == "open") {
-          // if (this.type == "host") WebRTC.refreshShare();
-          // if (this.type == "participant") WebRTC.closeShare();
+          this.session_view.inititialiseWhiteBoard();
         } else {
           this.session_view.toContentView(this.hasContent);
         }

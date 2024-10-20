@@ -1,6 +1,6 @@
 import {firebaseConfig, storageURL} from "./firebase-config.js"
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
-import {getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
+import {getAuth, signInAnonymously, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
 import {update, getDatabase, child, push, ref as _ref, get, onValue, onChildAdded, onChildChanged, onChildRemoved, set, off} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
 import { getFunctions, httpsCallable  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js'
 import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js'
@@ -10,7 +10,7 @@ let App = null;
 let Database = null;
 let Functions = null;
 let Auth = null;
-let User = "initialise";
+let User = null;
 let StateListeners = [];
 
 // Generates a random key to use as the device's unique identifier DUID.
@@ -30,7 +30,7 @@ if (DUID == null) {
    If a listener returns the string "remove" then the listener will be removed */
 function authChangeHandler(user){
   // If the user has changed
-  if (((user == null) != (User == null || typeof User == "string")) || (user != null && User != null && user.uid != user.uid)) {
+  if (!(user != null && User != null && user.uid == user.uid)) {
     // Update the user object
     User = user;
     let newListeners = [];
@@ -63,12 +63,16 @@ export async function initialise(config = firebaseConfig) {
   return new Promise((resolve, reject) => {
     let init = true;
     onAuthStateChanged(Auth, async (userData) => {
-      console.log("auth state change: user data", userData);
-      if (init) {
-        resolve();
-        init = false;
+      if (userData == null) {
+        signInAnonymously(Auth);
+      } else {
+        console.log("auth state change: user data", userData);
+        if (init) {
+          resolve();
+          init = false;
+        }
+        authChangeHandler(userData);
       }
-      authChangeHandler(userData);
     });
   });
 }
