@@ -559,10 +559,7 @@ class SessionView extends HideShow {
 
     this.main_app_window = mainContentView.createChild("div", { class: "main-app-window" });
 
-    let wb = new WhiteBoard();
-    this.whiteboard = wb
-    mainContentView.appendChild(wb)
-    
+   
 
     contentView.createChild("div", { class: "overlay top" })
     contentView.createChild("div", { class: "overlay bottom" })
@@ -581,6 +578,12 @@ class SessionView extends HideShow {
     defaultView.class = "default-view"
     defaultView.watchAspectRatio();
     this.default_view = defaultView;
+
+    let wb = new WhiteBoard();
+    wb.showTools = false;
+    this.whiteboard = wb
+    rel.appendChild(wb)
+    
 
     let pointers = rel.createChild(SvgResize);
     pointers.styles = {
