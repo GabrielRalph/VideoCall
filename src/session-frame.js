@@ -14,6 +14,7 @@ import { CommunicationBoard } from "./communication-board.js"
 import { Messages } from "./messages.js"
 import {WhiteboardFirebaseFrame, WhiteBoard} from "./whiteboard-firebase.js"
 import * as CC from "./closed-captions.js"
+import { FirebaseFrame } from "./Firebase/rtc-signaler.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
@@ -155,7 +156,7 @@ class ToolBar extends SvgPlus {
     }
 
     let cc = this.createChild("div", {class: "icon tbs", type: "cc"});
-    cc.appendChild(CC.getIcon())
+    CC.setIcon(cc);
   
 
     this.share = this.createChild("div", { class: "tbs icon", type: "file" });
@@ -609,6 +610,9 @@ class SessionView extends HideShow {
     this.whiteboard = wb
     rel.appendChild(wb)
     
+
+    CC.setCaptionElement(rel.createChild("div", {class: "closed-captions"}));
+
 
     let pointers = rel.createChild(SvgResize);
     pointers.styles = {
@@ -1380,6 +1384,11 @@ class SessionFrame extends SvgPlus {
     if (!this.loader.shown) await this.loader.show();
   }
 
+  initialiseFirebaseApps(){
+    this.session_view.inititialiseWhiteBoard();
+    CC.setFBFrame(new FirebaseFrame("cc"));
+  }
+
   async joinSession(key, forceParticipant = false) {
     await parallel(this.joining(), this.error_frame.hide());
     if (await Webcam.startWebcam()) {
@@ -1387,7 +1396,7 @@ class SessionFrame extends SvgPlus {
       // this.videos.setSrc("local", stream);
       try {
         await WebRTC.start(key, stream, forceParticipant);
-        this.session_view.inititialiseWhiteBoard();
+        this.initialiseFirebaseApps();
         this.default_view.show();
         this.session_view.show();
         this.loader.setText("")

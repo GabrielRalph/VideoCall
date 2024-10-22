@@ -19,7 +19,7 @@
     --ic4: #ff4646;
     --color-danger: #8f53c9;
     --wc: #252222;
-    --wc2: #252222ca;
+    --wc2: #252222ab;
     
     --tbc: #3a3737;
     
@@ -46,6 +46,8 @@ session-frame {
     right: 0;
     --side-window-size: 35vh;
     --side-window-percent: 0;
+    --tool-bar-height: 8vh;
+
 }
 
 session-view {
@@ -607,7 +609,6 @@ video-call-screen video-display {
 
 /* Tool Bar */
 tool-bar {
-    --tool-bar-height: 8vh;
     display: flex;
     border: var(--sp) solid var(--tbc);
     /* gap: var(--sp); */
@@ -949,7 +950,8 @@ pdf-viewer {
     .coms-icon {
         position: absolute;
         top: 0;
-        left: calc(var(--slide) * (90% + 1em));
+        width: 1em;
+        left: calc(var(--slide) * (100% - 3em - 3px));
         background-color: var(--wc);
         border-right: 3px solid var(--tbc);
         border-bottom: 3px solid var(--tbc);
@@ -964,7 +966,7 @@ pdf-viewer {
         top: 0;
         left: 0;
         bottom: 0;
-        width: calc(var(--slide) * 90%);
+        width: calc(var(--slide) * (100% - 4em - 3px));
         background-color: var(--tbc);
         z-index: 1002;
         border-radius: 0 0 1em 0;
@@ -1035,4 +1037,27 @@ pdf-viewer {
 
     white-board {
         font-size: 0.9em;
+        z-index: 1010;
+    }
+
+
+    .closed-captions {
+        position: absolute;
+        left: 50%;
+        bottom: calc( (var(--tool-bar-height) + 2 * var(--br) + 2 * var(--sp)));
+        padding: 0.3em;
+        border-radius: 0.3em;
+        background: var(--wc2);
+        color: white;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%);
+        transition: 0.2s ease-in;
+        z-index: 1011;
+
+    }
+
+    .closed-captions[shown] {
+        opacity: 1;
+        pointer-events: all;
     }
