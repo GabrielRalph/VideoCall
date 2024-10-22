@@ -13,14 +13,10 @@ import { getApps, SquidlyApp } from "./Apps/app-library.js"
 import { CommunicationBoard } from "./communication-board.js"
 import { Messages } from "./messages.js"
 import {WhiteboardFirebaseFrame, WhiteBoard} from "./whiteboard-firebase.js"
+import * as CC from "./closed-captions.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
-
-console.log(Apps);
-
-console.log(WhiteBoard);
-
 
 function getQueryKey(string = window.location.search) {
   let key = null;
@@ -91,6 +87,32 @@ function setMouseSVG(svg) {
   document.body.style.setProperty("--cursor", `url("data:image/svg+xml,${uri}"), auto`);
 }
 
+// HOT KEYS DISABLE WHEN IN TEXT EDIT
+window.addEventListener("keyup", (e) => {
+  // Check if the active element is an input, textarea, or contenteditable element
+  const activeElement = document.activeElement;
+  const isTyping = activeElement.tagName === 'INPUT' ||
+                  activeElement.tagName === 'TEXTAREA' ||
+                  activeElement.isContentEditable;
+
+  if (isTyping) {
+      console.log("user is typing");
+      e.stopImmediatePropagation()
+  }
+})
+window.addEventListener("keydown", (e) => {
+  // Check if the active element is an input, textarea, or contenteditable element
+  const activeElement = document.activeElement;
+  const isTyping = activeElement.tagName === 'INPUT' ||
+                  activeElement.tagName === 'TEXTAREA' ||
+                  activeElement.isContentEditable;
+
+  if (isTyping) {
+      console.log("user is typing");
+      e.stopImmediatePropagation()
+  }
+})
+
 
 
 class ToolBar extends SvgPlus {
@@ -132,6 +154,9 @@ class ToolBar extends SvgPlus {
       WebRTC.setSessionFieldState("bubbleState", this.bubbleHidden == true ? null : 'hidden');
     }
 
+    let cc = this.createChild("div", {class: "icon tbs", type: "cc"});
+    cc.appendChild(CC.getIcon())
+  
 
     this.share = this.createChild("div", { class: "tbs icon", type: "file" });
 
