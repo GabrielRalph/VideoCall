@@ -279,6 +279,7 @@ const CommunicationGrid = [
   export class CommunicationBoard extends SvgPlus {
     constructor(){
       super('communication-board');
+      this._shown = false;
       this.events = {
         // contextmenu: (e) => {
         //   e.preventDefault();
@@ -306,6 +307,9 @@ const CommunicationGrid = [
         this.onVector(new Vector(e));
         this.eyePosition = new Vector(e);
       })
+      window.addEventListener("mouseleave", () => {
+        this._over = false;
+      })
   
       this.renderGrid();
       this.sprogress = 0;
@@ -323,6 +327,7 @@ const CommunicationGrid = [
         this.init = true;
         console.log("init");
         this.onValue("shown", (shown) => {
+          console.log("communication-board: shown", shown);
           this._show(shown);
         });
 
@@ -350,7 +355,6 @@ const CommunicationGrid = [
     }
 
     set dwellRelease(num){
-      this.set("dwellRelease", num);
       this._dwellRelease = num;
     }
     get dwellRelease(){
@@ -433,17 +437,18 @@ const CommunicationGrid = [
     }
   
     show(bool){
-      console.log("show", bool);
       this._show(bool);
-      this.set("shown", bool);
     }
-    _show(bool) {
+    async _show(bool) {
       if (bool != this.shown) {
+        this._showing = true;
         this._shown = bool;
-        this.waveTransition((t) => {
+        await this.waveTransition((t) => {
           this.styles = {"--slide": t}
         }, 350, bool);
         this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
+        this._showing = false;
+
       }
     }
     get shown(){
@@ -452,10 +457,12 @@ const CommunicationGrid = [
   
   
     set sprogress(val) {
+      if (this._showing) return;
       if (val > 1) val = 1;
       if (val < 0) val = 0;
-  
-      if (this.sprogress < 1 && val == 1) {
+      
+      if (this.sprogress < 1 && val >= 1) {
+        val = 0;
         this.show(!this.shown);
       }
       this._sprogress = val;
@@ -465,10 +472,15 @@ const CommunicationGrid = [
     }
   
     async updateProgress(){
+      let t0 = performance.now();
       while(true) {
-        if (!this._over) {
-          this.sprogress -= 0.02;
-        }
+        let tnow = performance.now();
+        let dt = (tnow - t0)/1000;
+        t0 = tnow;
+
+        let dp = dt / (!this._over ? -this.dwellRelease : this.dwellTime);
+        if (Number.isNaN(dp)) dp = 0;
+        this.sprogress += dp;
         await delay();
       }
     }
@@ -493,11 +505,11 @@ const CommunicationGrid = [
       let {iconCenter, shown} = this;
       let dist = iconCenter.dist(v);
       let over = dist < 100;
-      this._over = over
-  
+      this._over = false;
+      if (!this._lastTime) this._lastTime = performance.now();
       if (!shown) {
           if (isEye && over) {
-            this.sprogress += 0.02;
+            this._over = true;
           }
   
           if (!this.fading) {
@@ -509,9 +521,10 @@ const CommunicationGrid = [
             }
             this.fading = false;
           }
+
       } else {
         if (isEye && over) {
-          this.sprogress += 0.02;
+          this._over = true;
         }
         this.icon.shown = true;
       }

@@ -1189,7 +1189,6 @@ class SessionFrame extends SvgPlus {
         if (state.status == "started") this.tool_bar.active = true;
         this.loader.show(400, state.status == "open");
         if (state.status == "open") {
-          this.session_view.inititialiseWhiteBoard();
         } else {
           this.session_view.toContentView(this.hasContent);
         }
@@ -1388,6 +1387,7 @@ class SessionFrame extends SvgPlus {
       // this.videos.setSrc("local", stream);
       try {
         await WebRTC.start(key, stream, forceParticipant);
+        this.session_view.inititialiseWhiteBoard();
         this.default_view.show();
         this.session_view.show();
         this.loader.setText("")

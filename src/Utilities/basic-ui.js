@@ -69,10 +69,15 @@ export class Slider extends SvgPlus {
 
       this.addEventListener("mousedown", (e) => {
           this.mode = "grab"
+          e.preventDefault();
       })
       this.addEventListener("mousemove", (e) => {
           this.mode = e.buttons == 1 ? "grab" : "over";
-          if (e.buttons) this.moveCursor(e);
+          if (e.buttons) {
+            this.moveCursor(e);
+            e.preventDefault();
+          }
+
       })
       this.addEventListener("mouseup", (e) => {
           this.mode = "over"
