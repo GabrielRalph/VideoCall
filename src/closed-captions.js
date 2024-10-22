@@ -75,10 +75,10 @@ export function setIcon(i){
         click: () => {
             if (recognition) {
                 fbf.set("on", false);
-                endRecognition()
+                // endRecognition()
             } else {
                 fbf.set("on", true);
-                startRecognition();
+                // startRecognition();
             }
         }
     }
