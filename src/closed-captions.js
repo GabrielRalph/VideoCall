@@ -39,7 +39,7 @@ export function startRecognition(){
             console.error('Error occurred in recognition: ', event.error);
         };
         recognition.onend = () => {
-            console.log('Speech recognition service disconnected');
+            recognition.start();
         };
 
         recognition.start();
