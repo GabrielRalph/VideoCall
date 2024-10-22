@@ -437,7 +437,9 @@ const CommunicationGrid = [
     }
   
     show(bool){
-      this._show(bool);
+      if (show != null) {
+        this._show(bool);
+      }
     }
     async _show(bool) {
       if (bool != this.shown) {
