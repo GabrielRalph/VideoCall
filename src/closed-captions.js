@@ -10,6 +10,7 @@ let icon = null;
 let recognition = null;
 let captionsDiv = null;
 let fbf = null;
+let recognising = false;
 export function startRecognition(){
     if ('webkitSpeechRecognition' in window) {
         icon.styles = {
@@ -17,31 +18,26 @@ export function startRecognition(){
             "--ic2": "var(--ic4)",
         }
         
-        let timeout = null;
+        // let timeout = null;
         recognition = new webkitSpeechRecognition();
         recognition.continuous = true; // Keep recognizing
         recognition.interimResults = true; // Show interim results
         recognition.onresult = (event) => {
-            clearTimeout(timeout)
+            
 
             let transcript = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 transcript += event.results[i][0].transcript;
             }
-            captionsDiv.innerText = transcript;
-            captionsDiv.toggleAttribute("shown", transcript != "")
-
-            timeout = setTimeout(() => {
-                captionsDiv.toggleAttribute("shown", false)
-            }, 2000)
+            if (fbf) fbf.set(`text/${fbf.uid}`, transcript)
+            
         };
         recognition.onerror = (event) => {
             console.error('Error occurred in recognition: ', event.error);
         };
         recognition.onend = () => {
-            // recognition.start();
+            if (recognising) recognition.start();
         };
-
         recognition.start();
     } else {
     }
@@ -55,6 +51,7 @@ export function endRecognition(){
         icon.styles = {"--ic1": null, "--ic2": null}
     }
     recognition = null;
+    recognising = false;
 }
 
 export function setCaptionElement(el) {
@@ -75,10 +72,8 @@ export function setIcon(i){
         click: () => {
             if (recognition) {
                 fbf.set("on", false);
-                // endRecognition()
             } else {
                 fbf.set("on", true);
-                // startRecognition();
             }
         }
     }
@@ -88,6 +83,27 @@ export function setFBFrame(fb) {
     fb.onValue("on", (on) => {
         if (on) startRecognition();
         else endRecognition();
+    })
+    let timeout = null;
+    fb.onValue("text", (data) => {
+        captionsDiv.innerHTML = "";
+        if (data) {
+            clearTimeout(timeout)
+
+            if (fb.uid in data) {
+                captionsDiv.createChild("div", {content: data[fb.uid]})
+                delete data[fb.uid]
+            }
+            for (let k in data) {
+                captionsDiv.createChild('div', {class: "other", content: data[k]})
+            }
+
+            captionsDiv.toggleAttribute("shown", transcript != "")
+            timeout = setTimeout(() => {
+                captionsDiv.toggleAttribute("shown", false)
+            }, 2000)
+
+        }
     })
     fbf = fb;
 }

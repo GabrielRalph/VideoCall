@@ -304,11 +304,10 @@ const CommunicationGrid = [
       })
   
       window.addEventListener("mousemove", (e) => {
-        this.onVector(new Vector(e));
         this.eyePosition = new Vector(e);
       })
       window.addEventListener("mouseleave", () => {
-        this._over = false;
+        this.eyePosition = null;
       })
   
       this.renderGrid();
@@ -328,7 +327,7 @@ const CommunicationGrid = [
         console.log("init");
         this.onValue("shown", (shown) => {
           console.log("communication-board: shown", shown);
-          this._show(shown);
+          this.show(shown);
         });
 
         this.onValue("dwellTime", (time) => {
@@ -369,6 +368,7 @@ const CommunicationGrid = [
   
     /** @param {Vector} e */
     set eyePosition(e) {
+      // horver icon if shown
       if (this.shown) {
         let item = this.getItemAtVector(e);
         for (let i of this.content.children) i.hover = false;
@@ -377,6 +377,7 @@ const CommunicationGrid = [
           item.hover = true;
         }
       } 
+
       this.onVector(e, true);
     }
   
@@ -436,13 +437,9 @@ const CommunicationGrid = [
       })
     }
   
-    show(bool){
-      if (bool != null) {
-        this._show(bool);
-      }
-    }
-    async _show(bool) {
-      if (bool != this.shown) {
+    async show(bool) {
+      console.log();
+      if (typeof bool === "boolean" && bool != this.shown && !this._showing) {
         this._showing = true;
         this._shown = bool;
         await this.waveTransition((t) => {
@@ -450,7 +447,6 @@ const CommunicationGrid = [
         }, 350, bool);
         this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
         this._showing = false;
-
       }
     }
     get shown(){
@@ -475,12 +471,17 @@ const CommunicationGrid = [
   
     async updateProgress(){
       let t0 = performance.now();
+      
       while(true) {
         let tnow = performance.now();
         let dt = (tnow - t0)/1000;
         t0 = tnow;
 
-        let dp = dt / (!this._over ? -this.dwellRelease : this.dwellTime);
+        let over = this.isOver;
+        if (over || this.shown) this.icon.show();
+        else this.icon.hide();
+
+        let dp = dt / (!over ? -this.dwellRelease : this.dwellTime);
         if (Number.isNaN(dp)) dp = 0;
         this.sprogress += dp;
         await delay();
@@ -501,35 +502,20 @@ const CommunicationGrid = [
       }
       return center;
     }
-  
+
+
+    get isOver(){
+      let {eyeVector, iconCenter} = this;
+      let over = false;
+      if (eyeVector instanceof Vector) {
+          over = eyeVector.dist(iconCenter) < 100;
+      }
+
+      return over;
+    }
   
     async onVector(v, isEye = false) {
-      let {iconCenter, shown} = this;
-      let dist = iconCenter.dist(v);
-      let over = dist < 100;
-      this._over = false;
-      if (!this._lastTime) this._lastTime = performance.now();
-      if (!shown) {
-          if (isEye && over) {
-            this._over = true;
-          }
-  
-          if (!this.fading) {
-            this.fading = true;
-            if (over) {
-              await this.icon.show();
-            } else {
-              await this.icon.hide();
-            }
-            this.fading = false;
-          }
-
-      } else {
-        if (isEye && over) {
-          this._over = true;
-        }
-        this.icon.shown = true;
-      }
+       this.eyeVector = v;
     }
   }
   
