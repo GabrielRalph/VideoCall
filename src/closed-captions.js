@@ -37,7 +37,8 @@ export function startRecognition(){
         };
         recognition.onend = () => {
             console.log("ended");
-            if (recognising) recognition.start();
+            if (recognising) startRecognition();
+            console.log("restarting");
         };
         recognition.start();
     } else {
