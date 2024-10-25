@@ -36,6 +36,7 @@ export function startRecognition(){
             console.error('Error occurred in recognition: ', event.error);
         };
         recognition.onend = () => {
+            console.log("ended");
             if (recognising) recognition.start();
         };
         recognition.start();
