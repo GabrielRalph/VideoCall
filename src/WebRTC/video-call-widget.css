@@ -1048,7 +1048,7 @@ pdf-viewer {
         padding: 0.3em;
         border-radius: 0.3em;
         background: var(--wc2);
-        color: rgb(255, 209, 148);
+        color: rgb(255, 215, 0);
         opacity: 0;
         pointer-events: none;
         transform: translate(-50%);

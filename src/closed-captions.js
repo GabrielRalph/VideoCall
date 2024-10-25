@@ -104,6 +104,7 @@ export function setFBFrame(fb) {
 
             captionsDiv.toggleAttribute("shown", content)
             timeout = setTimeout(() => {
+                fb.set(`text/${fb.uid}`, null)
                 captionsDiv.toggleAttribute("shown", false)
             }, 2000)
 
