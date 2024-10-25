@@ -1048,7 +1048,7 @@ pdf-viewer {
         padding: 0.3em;
         border-radius: 0.3em;
         background: var(--wc2);
-        color: white;
+        color: rgb(255, 209, 148);
         opacity: 0;
         pointer-events: none;
         transform: translate(-50%);
@@ -1060,4 +1060,8 @@ pdf-viewer {
     .closed-captions[shown] {
         opacity: 1;
         pointer-events: all;
+    }
+
+    .closed-captions .other {
+        color: white;
     }

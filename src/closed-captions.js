@@ -91,15 +91,18 @@ export function setFBFrame(fb) {
         if (data) {
             clearTimeout(timeout)
 
+            let content = false;
             if (fb.uid in data) {
                 captionsDiv.createChild("div", {content: data[fb.uid]})
+                content = content || (data[fb.uid] != "")
                 delete data[fb.uid]
             }
             for (let k in data) {
+                content = content || (data[k] != "")
                 captionsDiv.createChild('div', {class: "other", content: data[k]})
             }
 
-            captionsDiv.toggleAttribute("shown", transcript != "")
+            captionsDiv.toggleAttribute("shown", content)
             timeout = setTimeout(() => {
                 captionsDiv.toggleAttribute("shown", false)
             }, 2000)
