@@ -1,0 +1,89 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box
+  }
+  
+  ::selection {
+    background: transparent;
+  }
+  
+  .rel {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+
+  }
+  .emoji-container {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+
+  }
+  
+  .emoji-list {
+    opacity: 0;
+    pointer-events: all;
+    position: absolute;
+    bottom:  calc((var(--tool-bar-height) + 2* var(--br) + 2* var(--sp)));
+    left: 50%;
+    transform: translateX(-50%);
+    border: var(--sp) solid var(--tbc);
+    background: var(--wc);
+    margin-inline: auto;
+    display: table;
+    border-radius: var(--br);
+    padding: 10px;
+    transition: 0.2s ease-in opacity;
+    display: flex;
+    flex-direction: column;
+    color: white;
+  }
+  .emoji-list > *:last-child {
+    cursor: pointer;
+    background: var(--tbc);
+    border-radius: 0.3em;
+    padding: 0.3em 0;
+  }
+
+
+  .emoji-list[shown] {
+    opacity: 1;
+  }
+  .emoji-list ul {
+    display: flex;
+    gap: 2.5px;
+  }
+  
+  .emoji-list ul li {
+    display: flex; 
+    cursor: pointer;
+  }
+  
+  .emoji-list ul li button {
+    font-size: 1.3em;
+    cursor: pointer;
+    padding: 0.35em;
+    border:none;
+    border-radius: 50%;
+    background-color: transparent;
+    outline-color: rgba(255,255,255,0.1);
+    line-height: 44px;
+    transition: 0.3s ease-in-out transform;
+  }
+  .emoji-list ul li button:focus-visible {
+    outline: 2px solid rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.05);
+  }
+  .emoji:hover {
+    transform: scale(1.2);
+  }
+  
+  .emoji-animate {
+    font-size: 3em;
+    position: absolute;
+    will-change: transform;
+  }
+

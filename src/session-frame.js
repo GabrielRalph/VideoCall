@@ -15,6 +15,7 @@ import { Messages } from "./messages.js"
 import {WhiteboardFirebaseFrame, WhiteBoard} from "./whiteboard-firebase.js"
 import * as CC from "./closed-captions.js"
 import { FirebaseFrame } from "./Firebase/rtc-signaler.js"
+import { EmojiReactions } from "./emoji/emojis.js"
 const Webcam = EyeGaze.Webcam;
 
 const Apps = getApps();
@@ -157,6 +158,8 @@ class ToolBar extends SvgPlus {
 
     let cc = this.createChild("div", {class: "icon tbs", type: "cc"});
     CC.setIcon(cc);
+
+    this.emoji = this.createChild("div", {class: "icon tbs", type: "emoji", content: Icons["emoji"]})
   
 
     this.share = this.createChild("div", { class: "tbs icon", type: "file" });
@@ -613,6 +616,8 @@ class SessionView extends HideShow {
 
     CC.setCaptionElement(rel.createChild("div", {class: "closed-captions"}));
 
+    this.emojiReactions = rel.createChild(EmojiReactions)
+
 
     let pointers = rel.createChild(SvgResize);
     pointers.styles = {
@@ -639,7 +644,7 @@ class SessionView extends HideShow {
 
     this.tool_bar = rel.createChild(ToolBar);
 
-
+    this.tool_bar.emoji.onclick = () => this.emojiReactions.show();
 
     let offset = 0;
     let sidePull = false;
@@ -697,13 +702,33 @@ class SessionView extends HideShow {
     // });
   }
 
-  inititialiseWhiteBoard(){
+  setIcon(content, isMe) {
+    let videoDisplays = this.querySelectorAll(`video-display[type = ${isMe ? 'local' : 'remote'}]`)
+    for (let display of videoDisplays) {
+      let clear = false;
+      if (content instanceof Element) {
+        display.topRight.innerHTML = "";
+        display.topRight.appendChild(content);
+      } else {
+        if (typeof content !== "string") content = "";
+        if (content == "") clear = true;
+        display.topRight.innerHTML = content;
+      }
+
+      display.topRight.toggleAttribute("show", !clear)
+    }
+  }
+
+  initialiseFirebaseApps(){
     if (!this.whiteboard._fb) {
       console.log("initialiseing white board");
       let fb = new WhiteboardFirebaseFrame("whiteboard", this.whiteboard);
       console.log(fb.appRef(null));
       this.whiteboard.svgView.viewBoxX.displayPixelSize();
       this.whiteboard._fb = fb;
+
+      this.emojiReactions.firebaseFrame = new FirebaseFrame("emoji");
+      CC.setFBFrame(new FirebaseFrame("cc"));
     }
   }
 
@@ -1385,8 +1410,7 @@ class SessionFrame extends SvgPlus {
   }
 
   initialiseFirebaseApps(){
-    this.session_view.inititialiseWhiteBoard();
-    CC.setFBFrame(new FirebaseFrame("cc"));
+    this.session_view.initialiseFirebaseApps();
   }
 
   async joinSession(key, forceParticipant = false) {

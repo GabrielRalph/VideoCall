@@ -55,7 +55,7 @@ class VideoDisplay extends HideShow {
             // }
         });
         this.topRight = this.createChild("div", {
-            class: "icon-slot",
+            class: "icon-slot top-right",
             styles: {
                 position: "absolute",
                 top: 0,
@@ -399,7 +399,7 @@ class DragCollapseWidget extends HideShow {
     get screenSize(){
         let ofp = this.offsetParent;
         let size = new Vector(window.innerWidth, window.innerHeight);
-        if (ofp) {
+        if (ofp && Array.isArray(ofp.bbox)) {
             size = ofp.bbox[1];
             if (!(size instanceof Vector)) size = new Vector(window.innerWidth, window.innerHeight);
         }

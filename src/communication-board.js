@@ -109,12 +109,19 @@ async function blob2grid(blob) {
   return specs
 }
 
-fetchGrid();
+let gridPromise = fetchGrid("/assets/ComGrid/4x3.zip");
 async function fetchGrid(url) {
-  let res = await fetch("../assets/ComGrid/GRID2/Archive.zip");
+  let base = import.meta.url.split("/");
+  base.pop();
+  base.pop()
+  base = base.join("/");
+  let res = await fetch(base + url);
   let blob = await res.blob();
-  return await blob2grid(blob);
+  let grid = await blob2grid(blob);
+  return grid;
 }
+
+
 
 
 async function openGrid(){
@@ -181,7 +188,7 @@ const CommunicationGrid = [
       color: "#ebeeff",
       img: "https://session-app.squidly.com.au/assets/ComGrid/r1_Repeat.svg"
     },
-  ]
+]
   
   class CommunicationIcon extends SvgPlus {
     constructor(icon, board){
@@ -392,34 +399,31 @@ const CommunicationGrid = [
       return res;
     }
 
-
-     makeSettings(){
-      let dwell = new SvgPlus("div");
-      dwell.createChild("b", {content: "Dwell Time"})
-      let r = dwell.createChild("div", {styles: {display: "flex", "align-items": "center", "flex-direction": "row-reverse"}})
-      let ts = r.createChild("span", {content: "0.7s", styles: {"user-select": "none", width: "2em"}});
-      let dwellTime = r.createChild(Slider, {
-        events: {
-          change: () => {
-            console.log(dwellTime.value);
-            let t = dwellTime.value * 2.7 + 0.3;
-            this.dwellTime = t
-            ts.innerHTML = Math.round(t*10)/10 + "s";
-          }
+    makeSettings(){
+    let dwell = new SvgPlus("div");
+    dwell.createChild("b", {content: "Dwell Time"})
+    let r = dwell.createChild("div", {styles: {display: "flex", "align-items": "center", "flex-direction": "row-reverse"}})
+    let ts = r.createChild("span", {content: "0.7s", styles: {"user-select": "none", width: "2em"}});
+    let dwellTime = r.createChild(Slider, {
+      events: {
+        change: () => {
+          let t = dwellTime.value * 2.7 + 0.3;
+          this.dwellTime = t
+          ts.innerHTML = Math.round(t*10)/10 + "s";
         }
-      });
-
-      this.setDwellTime = (t) => {
-        dwellTime.value = (t-0.3)/2.7;
-        ts.innerHTML = Math.round(t*10)/10 + "s";
       }
+    });
 
-      this.setDwellTime(0.7);
+    this.setDwellTime = (t) => {
+      dwellTime.value = (t-0.3)/2.7;
+      ts.innerHTML = Math.round(t*10)/10 + "s";
+    }
 
-      return dwell;
-     }
+    this.setDwellTime(0.7);
 
-    
+    return dwell;
+    }
+
     async openGrid(){
       let grid = await openGrid();
       await this.renderGrid(grid)
@@ -427,6 +431,13 @@ const CommunicationGrid = [
     }
   
     async renderGrid(grid = CommunicationGrid, size = 3){
+      grid = await gridPromise;
+      let n = grid.length;
+      let rows = Math.ceil(n / size);
+      this.content.styles = {
+        "grid-template-columns":(new Array(size)).fill("1fr").join(" "),
+        "grid-template-rows": (new Array(rows)).fill("1fr").join(" ")
+      }
       this.content.innerHTML = "";
       grid.map((icon, i) => {
         this.content.createChild(CommunicationIcon, {
@@ -449,6 +460,7 @@ const CommunicationGrid = [
         this._showing = false;
       }
     }
+
     get shown(){
       return this._shown;
     }
@@ -465,6 +477,7 @@ const CommunicationGrid = [
       }
       this._sprogress = val;
     }
+
     get sprogress(){
       return this._sprogress;
     }
@@ -488,11 +501,10 @@ const CommunicationGrid = [
       }
     }
   
-  
     get iconCenter(){
       let center = new Vector();
       let parent = this.offsetParent;
-      if (parent != null) {
+      if (parent != null && Array.isArray(parent.bbox)) {
         let [origin, size] = parent.bbox;
         if (!this.shown) {
           center = origin;

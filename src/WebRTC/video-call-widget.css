@@ -552,6 +552,14 @@ video-display video {
     opacity: 1;
     pointer-events: all;
 }
+.icon-slot[show] {
+    opacity: 1;
+    pointer-events: all;
+}
+.icon-slot.top-right {
+    background: transparent;
+}
+
 
 /* Video Display Icon Slot Style */
 
@@ -621,7 +629,7 @@ tool-bar {
     height: var(--tool-bar-height);
     --hsr: 1;
     font-size:1em;
-    margin: var(--br);
+    margin-bottom: var(--br);
     z-index: 1200;
   }
 
@@ -1064,4 +1072,15 @@ pdf-viewer {
 
     .closed-captions .other {
         color: white;
+    }
+
+
+    emoji-reactions {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1012;
+        pointer-events: none;
     }
