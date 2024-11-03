@@ -681,7 +681,16 @@ tool-bar {
 
   tool-bar .tbs {
     width: var(--tool-bar-height);
+    position: relative;
     /* background: var(--tbc); */
+  }
+  .i-options {
+    position: absolute;
+    top: 50%;
+    right: 10%;
+    transform: translateY(-50%) scaleY(0.7);
+    font-size: 0.7em;
+
   }
 
   tool-bar .group {

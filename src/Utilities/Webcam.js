@@ -25,11 +25,13 @@ Video.style.setProperty("opacity", "0");
 document.body.prepend(Video);
 let Stream = null;
 let Stream2 = null;
-let Process = null;
 let webcam_on = false;
 var stopCapture = false;
 let capturing = false;
-let processListeners = [];
+
+let ProcessRunning = {};
+let Process = {};
+let processListeners = {};
 
 Video.setAttribute("autoplay", "true");
 Video.setAttribute("playsinline", "true");
@@ -55,32 +57,29 @@ async function nextFrame(){
 }
 
 // ~~~~~~~~ PRIVATE METHODS ~~~~~~~~
-async function runProcess(){
-  let t0 = window.performance.now();
-  captureFrame();
-  let t1 = window.performance.now();
-  let input = {video: Video, canvas: Canvas, context: Ctx};
-  input.width = Canvas.width;
-  input.height = Canvas.height;
-  if (Process instanceof Function){
-    try {
-      input.result = await Process(input);
-    } catch (e) {
-      input.error = e;
+async function runProcess(name = "default"){
+  if (name in Process) {
+    let input = {video: Video, canvas: Canvas, context: Ctx};
+    input.width = Canvas.width;
+    input.height = Canvas.height;
+    if (Process[name] instanceof Function){
+      try {
+        input.result = await Process[name](input);
+      } catch (e) {
+        input.error = e;
+      }
     }
-  }
-  let pd = window.performance.now();
-  input.times = {start: t0, capture: t1, process: pd}
-
-  for (let listener of processListeners) {
-    try {
-      listener(input);
-    } catch (e) {
-      console.log(e);
+    // let pd = window.performance.now();
+    // input.times = {start: t0, capture: t1, process: pd}
+    for (let listener of processListeners[name]) {
+      try {
+        listener(input);
+      } catch (e) {
+        console.log(e);
+      }
     }
   }
 
-  return input;
 }
 
 function captureFrame(){
@@ -116,10 +115,44 @@ function setUserMediaVariable(){
   }
 }
 
+function isRunning(){
+  for (let key in ProcessRunning) {
+    if (processListeners[key]) return true;
+  }
+  return falsek
+}
+
+async function runProcessingLoop(){
+  if (capturing) {
+    if (stopCapture) stopCapture = false;
+    return;
+  }
+  capturing = true;
+  let lastTime = -1
+  while (!stopCapture) {
+    await nextFrame();
+    let {currentTime} = Video;
+    if (currentTime != lastTime) {
+      captureFrame();
+      let proms = Object.keys(ProcessRunning)
+      .map(k => [k, ProcessRunning[k]])
+      .filter(([k, v]) => v)
+      .map(a => runProcess(a[0]));
+      await parallel(...proms);
+    }
+    lastTime = currentTime;
+  }
+  capturing = false;
+  stopCapture = false;
+}
+
 // ~~~~~~~~ PUBLIC METHODS ~~~~~~~~
-export function setProcess(algorithm){
+
+export function setProcess(algorithm, name = "default"){
   if (algorithm instanceof Function) {
-    Process = algorithm;
+    Process[name] = algorithm;
+    processListeners[name] = [];
+    ProcessRunning[name] = false;
   }
 }
 
@@ -141,7 +174,7 @@ export async function startWebcam(params = camParams1){
     Stream2 = stream2;
     Video.srcObject = stream;
 
-    return new Promise((resolve, reject) => {
+    webcam_on = await new Promise((resolve, reject) => {
       let onload = () => {
         webcam_on = true;
         Video.removeEventListener("loadeddata", onload);
@@ -153,7 +186,11 @@ export async function startWebcam(params = camParams1){
     console.log(e);
     webcam_on = false;
   }
-  console.log(webcam_on);
+  console.log(Process);
+  if (webcam_on && isRunning()) {
+    runProcessingLoop();
+  }
+
   return webcam_on;
 }
 
@@ -163,35 +200,31 @@ export function stopWebcam(){
       track.stop();
     }
   } catch(e) {}
-  stopProcessing();
+  stopProcessingAll();
   webcam_on = false;
 }
 
-export async function startProcessing(){
-  if (capturing) {
-    if (stopCapture) stopCapture = false;
-    return;
-  }
-  capturing = true;
-  while (!stopCapture) {
-    // console.log(stopCapture);
-    await nextFrame();
-    await runProcess();
-  }
-  capturing = false;
-  stopCapture = false;
-}
 
-export function stopProcessing() {
-  // console.log("stop process");
-  if (capturing) {
-    stopCapture = true;
+export function startProcessing(name = "default") {
+  if (name in ProcessRunning) {
+
+    ProcessRunning[name] = true;
+
+    if (!capturing && webcam_on) {
+      runProcessingLoop();
+    }
   }
 }
 
-export function addProcessListener(listener) {
+export function stopProcessing(name = "default") {
+  ProcessRunning[name] = false;
+  if (!isRunning()) stopCapture = true;
+}
+
+export function addProcessListener(listener, name = "default") {
   if (listener instanceof Function) {
-    processListeners.push(listener);
+    if (!(name in processListeners)) processListeners[name] = []
+    processListeners[name].push(listener);
   }
 }
 
