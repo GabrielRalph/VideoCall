@@ -33,6 +33,7 @@
   .charge-circle path {
     stroke: white;
     stroke-width: 3;
+    fill: none;
   }
   .icon {display: flex;
 padding-right: 0.3em;}
@@ -43,6 +44,7 @@ padding-right: 0.3em;}
 
   .emoji-list {
     opacity: 0;
+    font-size: 0.8em;
     pointer-events: all;
     position: absolute;
     bottom:  calc((var(--tool-bar-height) + 2* var(--br) + 2* var(--sp)));
@@ -53,9 +55,10 @@ padding-right: 0.3em;}
     margin-inline: auto;
     display: table;
     border-radius: var(--br);
-    padding: 10px;
+    padding: 0.4em;
     transition: 0.2s ease-in opacity;
     display: flex;
+    gap: 0.4em;
     flex-direction: column;
     color: white;
     pointer-events: none;
@@ -76,7 +79,7 @@ padding-right: 0.3em;}
   }
   .emoji-list ul {
     display: flex;
-    gap: 2.5px;
+    gap: 0.4em;
   }
   
   .emoji-list ul li {
@@ -109,3 +112,6 @@ padding-right: 0.3em;}
     will-change: transform;
   }
 
+  .btn.gesture-icon[on] {
+    background: rgb(39 152 39);
+  }

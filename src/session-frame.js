@@ -160,10 +160,10 @@ class ToolBar extends SvgPlus {
     CC.setIcon(cc);
 
     this.emoji = this.createChild("div", {class: "icon tbs", type: "emoji", content: Icons["emoji"]})
-    this.emoji_options = this.emoji.createChild("div", {
-      class: "i-options",
-      content: "^",
-    })
+    // this.emoji_options = this.emoji.createChild("div", {
+    //   class: "i-options",
+    //   content: "^",
+    // })
   
 
     this.share = this.createChild("div", { class: "tbs icon", type: "file" });
@@ -649,11 +649,7 @@ class SessionView extends HideShow {
     this.tool_bar = rel.createChild(ToolBar);
 
     this.tool_bar.emoji.onclick = () => this.emojiReactions.show();
-    this.tool_bar.emoji_options.onclick = (e) => {
-      e.stopImmediatePropagation();
-      this.emojiReactions.showSettings();
-      // this.emojiReactions.show();
-    }
+    
 
     let offset = 0;
     let sidePull = false;

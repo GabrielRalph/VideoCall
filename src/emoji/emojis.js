@@ -2,6 +2,7 @@ import { SvgPlus, Vector } from "../SvgPlus/4.js";
 import * as Webcam from "../Utilities/Webcam.js"
 import { predictGesture } from "./gesture.js";
 import { Icons } from "../Utilities/icons.js";
+// import { predictASLLetter } from "./tfjs-asl.js";
 
 Webcam.setProcess((input) => {
   return predictGesture(input.video)
@@ -31,9 +32,20 @@ const Emojis = {
    "Open_Palm": "✋",
   "Thinking face": "🤔",
   "Thumb_Down": "👎",
-  
+  "Victory": "✌️",
+  "Pointing_Up": "👆",
+  "Closed_Fist": "✊"
+
 
 }
+const EmojiSet = [
+  "ILoveYou",
+  "Thumb_Up",
+  "Party popper",
+  "Clapping hands",
+  "Laughing",
+  "Surprised face"
+];
 
 
 class PopUp extends SvgPlus {
@@ -106,9 +118,14 @@ class ScoreCharges {
   }
 
   get currentBest(){
-    let list = Object.keys(this.chargeValues).map(k => [k, this.chargeValues[k]]);
-    list.sort((a, b) => b[1] - a[1])
-    return list[0]
+    let keys = Object.keys(this.chargeValues);
+    let best = ["None", 0];
+    if (keys.length > 0) {
+      let list = Object.keys(this.chargeValues).map(k => [k, this.chargeValues[k]]);
+      list.sort((a, b) => b[1] - a[1])
+      best = list[0]
+    }
+    return best;
   }
 }
 
@@ -126,6 +143,9 @@ class ChargeCircle extends SvgPlus {
   }
 
   set best([value, score]) {
+    if (score == 0) {
+      value = ""
+    }
     this.progress = score;
     this.text.innerHTML = value
   }
@@ -160,18 +180,7 @@ class EmojiReactions extends SvgPlus {
 
     this.container = rel.createChild("div", {class: "emoji-container"});
 
-    let emojiSettings = rel.createChild(PopUp, {
-      class: "emoji-list",
-    });
-    this.emojiSettings = emojiSettings;
-    this.gestureIcon = emojiSettings.createChild("div", {class: "btn", 
-      events: {
-        click: () => this.recognising = !this.recognising
-      }
-    })
-    this.gestureTick = this.gestureIcon.createChild("div", {class: "icon",content: Icons.tick})
-    this.gestureIcon.createChild("span", {content: "Gesture Recognition ✋👍👎🤟"})
-    this.recognising = false;
+  
 
     this.emojiCharger = this.container.createChild(ChargeCircle)
 
@@ -182,7 +191,7 @@ class EmojiReactions extends SvgPlus {
 
     let list = emojiList.createChild("ul");
     this.emojis = {}
-    for (let k in Emojis) {
+    for (let k of EmojiSet) {
       this.emojis[k] = 
       list.createChild("li").createChild("button", {
         class: `${k} emoji`,
@@ -195,6 +204,14 @@ class EmojiReactions extends SvgPlus {
       class: "btn", 
       events: {click: () => {this.raiseHand()}}
     })
+    this.gestureIcon = emojiList.createChild("div", {
+      class: "btn gesture-icon",
+      events: {
+        click: () => this.recognising = !this.recognising
+      },
+      content: "Gesture Recognition ✋👍"
+    })
+    // this.recognising = false;
     this.setupStyles();
     this.setupGestures();
   }
@@ -205,7 +222,6 @@ class EmojiReactions extends SvgPlus {
       if (!!e.result) {
 
         let {gestures} = e.result;
-        console.log(e.result);
         for (let gg of gestures) {
           for (let {categoryName, score} of gg) {
             charges.addScore(categoryName, score);
@@ -228,7 +244,6 @@ class EmojiReactions extends SvgPlus {
           this.emojiCharger.best = best
         } else {
           this.emojiCharger.best = ["", 0]
-          
         }
 
       }
@@ -237,13 +252,11 @@ class EmojiReactions extends SvgPlus {
   }
 
   set recognising(val){
-    this.gestureTick.styles = {opacity: val ? null : "0"}
-    this._recognising = val;
+    this.gestureIcon.toggleAttribute("on", val);
     if (val) Webcam.startProcessing("gestures")
     else Webcam.stopProcessing("gestures")
+    this._recognising = val;
 
-    // if (val) this.gestureIcon.innerHTML = "Gesture Recognition ✋👍👎🤟"
-    // else 
   }
   get recognising(){
     return this._recognising;
@@ -282,7 +295,7 @@ class EmojiReactions extends SvgPlus {
 
   show() {
     this.emojiList.shown = true;
-    this.emojiSettings.shown = false;
+    // this.emojiSettings.shown = false;
   }
 
   showSettings(){
@@ -299,8 +312,14 @@ class EmojiReactions extends SvgPlus {
       content: Emojis[type]
     });
     
-    let target = this.emojis[type];
+    let key = type;
+    
+    if (!(key in this.emojis)) {
+      let keys = Object.keys(this.emojis)
+      key = keys[Math.round(Math.random() * (keys.length - 1))]
+    }
 
+    let target = this.emojis[key];
      // get dynamic positions
      const { height, left } = target.getBoundingClientRect();
      const { bottom, top, width } = this.container.getBoundingClientRect();
