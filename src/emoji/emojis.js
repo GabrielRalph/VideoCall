@@ -2,7 +2,8 @@ import { SvgPlus, Vector } from "../SvgPlus/4.js";
 import * as Webcam from "../Utilities/Webcam.js"
 import { predictGesture } from "./gesture.js";
 import { Icons } from "../Utilities/icons.js";
-// import { predictASLLetter } from "./tfjs-asl.js";
+import { predictASLLetter } from "./tfjs-asl.js";
+import { FirebaseFrame } from "../Firebase/rtc-signaler.js";
 
 Webcam.setProcess((input) => {
   return predictGesture(input.video)
@@ -18,8 +19,78 @@ async function getStyles(url) {
   cssStyle.replaceSync(cssText);
   return cssStyle
 }
-
 const stylesPromise = getStyles("/style.css");
+
+
+class EmojiFirebase extends FirebaseFrame {
+  emojiClearTime = 3;
+  onchange = (type, data) => {}
+  constructor() {
+    super("emoji");
+  }
+  onconnect(){
+    this.onChildAdded("emotes", (value, ref) => {
+      let {user, type} = value;
+      if (user == this.uid) {
+        setTimeout(() => {
+          this.set(`emotes/${ref}`, null)
+        }, this.emojiClearTime * 1000)
+      } else {
+        this.runEvent("emote", type)
+      }
+    })
+    
+    this.onChildAdded("raise-hand", (isRaised, uid) => {
+      this.runEvent("raise-hand", [isRaised, uid == this.uid]);
+    });
+    this.onChildChanged("raise-hand", (isRaised, uid) => {
+      this.runEvent("raise-hand", [isRaised, uid == this.uid]);
+    });
+
+    this.onValue("recognising", (mode) => {
+      this.runEvent("recognising", mode)
+    })
+
+    this.onChildAdded("asl-text", (text, uid) => {
+      if (this.uid != uid) {
+        this.runEvent("asl-text", text);
+      }
+    });
+    this.onChildChanged("asl-text", (text, uid) => {
+      if (this.uid != uid) {
+        this.runEvent("asl-text", text);
+      }
+    })
+  }
+
+  raiseHand() {
+    this.set(`raise-hand/${this.uid}`, true)
+  }
+
+  lowerHand() {
+    this.set(`raise-hand/${this.uid}`, false)
+  }
+
+  setASLText(text) {
+    this.set(`asl-text/${this.uid}`, text);
+  }
+
+  setRecognising(mode) {
+    this.set("recognising", mode)
+  }
+
+  sendEmote(type) {
+    let eref = this.push("emotes");
+    let user = this.uid
+    console.log(eref);
+    this.set(`emotes/${eref}`, {type, user})
+  }
+
+
+  runEvent(type, data) {
+    if (this.onchange instanceof Function) this.onchange(type, data)
+  }
+}
 
 
 const Emojis = {
@@ -80,23 +151,35 @@ class PopUp extends SvgPlus {
 }
 
 class ScoreCharges {
-  chargeRate = 0.03;
-  dischargeRate = 0.07;
-  chargeValues = {}
+  chargeTime = 2;
+  dischargeTime = 1;
+  chargeValues = {};
+  lastTime = -1;
 
   addScore(name, score) {
     if (name != "None") {
+      let time = performance.now();
+      if (this.lastTime == -1) this.lastTime = time;
+      let dt = time - this.lastTime;
+
       if (!(name in this.chargeValues)) this.chargeValues[name] = 0;
-      this.chargeValues[name] += score * this.chargeRate;
+      let dc= score * (dt / (this.chargeTime * 1000));
+      this.chargeValues[name] += dc;
     }
     this.lastScore = name;
   }
 
   update(){
+    let time = performance.now();
+    if (this.lastTime == -1) this.lastTime = time;
+    let dt = time - this.lastTime;
+    this.lastTime = time;
+
     let charges = this.chargeValues;
     let charged = null;
+    let dc = dt / (this.dischargeTime * 1000)
     for (let key in charges) {
-      if (key != this.lastScore) charges[key] -=  this.dischargeRate;
+      if (key != this.lastScore) charges[key] -=  dc;
       if (charges[key] < 0) {
         charges[key] = 0;
       }
@@ -139,15 +222,36 @@ class ChargeCircle extends SvgPlus {
       "text-anchor": "middle",
       "font-size": "4",
       y: 1.3
-    })
+    });
+    this.g1 = this.createChild("g");
+    this.toggleAttribute("hide", true)
+  }
+
+  spaceIcon(){
+    this.g1.innerHTML = `<path d = "M-2,-.5L-2,.5L2,.5L2-.5" />`;
+  }
+
+  delIcon(){
+    this.g1.innerHTML = `
+      <polygon class="cls-1" points="-.91 -1.38 2.28 -1.38 2.28 1.38 -.91 1.38 -2.28 0 -.91 -1.38"/>
+      <line class="cls-2" x1="1.07" y1="-.55" x2="-.04" y2=".55"/>
+      <line class="cls-2" x1="-.04" y1="-.55" x2="1.07" y2=".55"/>
+    `
   }
 
   set best([value, score]) {
     if (score == 0) {
       value = ""
     }
+    this.toggleAttribute("hide", value == "")
     this.progress = score;
-    this.text.innerHTML = value
+    this.text.innerHTML = "";
+    this.g1.innerHTML = "";
+    if (this[value + "Icon"] instanceof Function) {
+      this[value+"Icon"]();
+    } else {
+      this.text.innerHTML = value
+    }
   }
 
   set progress(num) {
@@ -167,20 +271,100 @@ class ChargeCircle extends SvgPlus {
   }
 }
 
+class ASLTextBoxes extends SvgPlus {
+  timeOutPeriod = 5;
+  constructor(){
+    super("div")
+    this.class = "asl-text-box";
+    this.me = this.createChild("div", {class: "me"});
+    this.them = this.createChild("div", {class: "them"});
+    this.hide();
+
+  }
+
+  hide(){
+    this.toggleAttribute("hide", true)
+  }
+  show(){
+    this.toggleAttribute("hide", false);
+    this.clearHideCountdown();
+  }
+  clearHideCountdown(){
+    clearTimeout(this.timeOutId);
+    this.timeOutId = null;
+  }
+  startHideCountdown(){
+    if (this.timeOutId == null) {
+      this.timeOutId = setTimeout(() => {
+        this.hide();
+        setTimeout(() => {
+          this.set("", true)
+          this.dispatchEvent(new Event("cleared"));
+        }, 300)
+      }, this.timeOutPeriod * 1000)
+    }
+  }
+
+  get isEmpty() {
+    let [a,b] = ["me", "them"].map(v=>this[v].innerHTML == "");
+    return a && b
+  }
+
+  get(isMe = true) {
+    return this[isMe ? "me" : "them"].textContent;
+  }
+
+  set(text, isMe = true) {
+    let user = isMe ? "me" : "them"
+    let textBox = this[user];
+    textBox.textContent = text;
+    if (this.isEmpty) {
+      this.hide()
+    } else {
+      this.show();
+    }
+  }
+
+  add(value, isMe = true) {
+    let user = isMe ? "me" : "them"
+    let textBox = this[user];
+    switch (value) {
+      case "del":
+        textBox.innerHTML = textBox.innerHTML.slice(0, -1);
+        break;
+      case "space":
+        textBox.innerHTML += "&nbsp;";
+        break;
+      default:
+        textBox.innerHTML += value;
+        break;
+    }
+    if (this.isEmpty) {
+      this.hide()
+    } else {
+      this.show();
+    }
+  }
+}
+
 class EmojiReactions extends SvgPlus {
   constructor() {
     super("emoji-reactions");
-
-  
-    
-
     let shadow = this.attachShadow({mode: "open"})
     let rel = this.createChild("div", {class: "rel"});
     shadow.appendChild(rel);
 
     this.container = rel.createChild("div", {class: "emoji-container"});
 
-  
+    this.textBox = rel.createChild(ASLTextBoxes, {
+      events: {
+        cleared: () => {
+          if (this.firebaseFrame) {
+            this.firebaseFrame.setASLText("");
+          }
+        }
+      }
+    });
 
     this.emojiCharger = this.container.createChild(ChargeCircle)
 
@@ -199,91 +383,148 @@ class EmojiReactions extends SvgPlus {
         events: {click: () => this.handleEmojiClick(k)}
       });
     }
+
     this.raisedIcon = emojiList.createChild("div", {
       content: "Raise Hand 🤚",
       class: "btn", 
       events: {click: () => {this.raiseHand()}}
     })
+
     this.gestureIcon = emojiList.createChild("div", {
-      class: "btn gesture-icon",
+      class: "btn",
       events: {
-        click: () => this.recognising = !this.recognising
+        click: () => {
+          let recog = this.recognising == "GestureDetection" ? null : "GestureDetection"
+          if (this.firebaseFrame) {
+            this.firebaseFrame.setRecognising(recog);
+          } else {
+            this.recognising = recog;
+          }
+        }
       },
       content: "Gesture Recognition ✋👍"
     })
-    // this.recognising = false;
+    
+    this.aslIcon = emojiList.createChild("div", {
+      class: "btn",
+      events: {
+        click: () => {
+          let recog = this.recognising == "ASLDetection" ? null : "ASLDetection";
+          if (this.firebaseFrame) {
+            this.firebaseFrame.setRecognising(recog);
+          } else {
+            this.recognising = recog;
+          }
+        }
+      },
+      content: "ASL Recognition"
+    })
+
+
     this.setupStyles();
     this.setupGestures();
+    this.setupFirebase();
+  }
+
+
+  onGestureDetection(e){
+    let charges = this.gestureCharges
+    if (!!e.result) {
+      let {gestures} = e.result;
+      for (let gg of gestures) {
+        for (let {categoryName, score} of gg) {
+          charges.addScore(categoryName, score);
+        }
+      }
+    }
+    let value = charges.update();
+    if (value) {
+      if (value in Emojis) {
+        if (value == "Open_Palm") {
+          this.raiseHand(false)
+        } else {
+          this.handleEmojiClick(value)
+        }
+      }
+    } else {
+      let best = charges.currentBest;
+      if (best[0] in Emojis) {
+        best[0] = Emojis[best[0]]
+        this.emojiCharger.best = best
+      } else {
+        this.emojiCharger.best = ["", 0]
+      }
+    }
+  }
+
+  onASLDetection(e){
+    let charges = this.aslCharges;
+    let y = predictASLLetter(e)
+    if (y != null) {
+      let bestScore = y.scores[y.best];
+      charges.addScore(y.best, bestScore);
+    }
+    let value = charges.update();
+    let best = charges.currentBest;
+    this.emojiCharger.best = best;
+    if (value) {
+      this.textBox.add(value);
+      if (this.firebaseFrame) {
+        this.firebaseFrame.setASLText(this.textBox.get())
+      }
+    } else if (best[1] == 0) {
+      this.textBox.startHideCountdown();
+    }  else {
+      this.textBox.clearHideCountdown();
+    }
   }
 
   setupGestures(){
-    let charges = new ScoreCharges();
+    this.gestureCharges = new ScoreCharges();
+    this.aslCharges = new ScoreCharges();
+    // this.aslCharges.chargeRate = 0.02
     Webcam.addProcessListener((e) => {
-      if (!!e.result) {
-
-        let {gestures} = e.result;
-        for (let gg of gestures) {
-          for (let {categoryName, score} of gg) {
-            charges.addScore(categoryName, score);
-          }
-        }
-      }
-      let value = charges.update();
-      if (value) {
-        if (value in Emojis) {
-          if (value == "Open_Palm") {
-            this.raiseHand()
-          } else {
-            this.handleEmojiClick(value)
-          }
-        }
-      } else {
-        let best = charges.currentBest;
-        if (best[0] in Emojis) {
-          best[0] = Emojis[best[0]]
-          this.emojiCharger.best = best
-        } else {
-          this.emojiCharger.best = ["", 0]
-        }
-
-      }
-      
+      this["on"+this.recognising](e);
     }, "gestures")
   }
 
-  set recognising(val){
-    this.gestureIcon.toggleAttribute("on", val);
-    if (val) Webcam.startProcessing("gestures")
-    else Webcam.stopProcessing("gestures")
-    this._recognising = val;
+  setupFirebase(){
+    let fb = new EmojiFirebase();
+      fb.onchange = (type, data) => {
+        switch (type) {
+          case "emote": 
+            this.animateEmoji(data);
+            break;
 
+          case "raise-hand":
+            let [raised, isMe] = data;
+            this.showRaisedHand(isMe, raised);
+            break;
+
+          case "asl-text": 
+            this.textBox.set(data, false);
+            break;
+
+          case "recognising": 
+            this.recognising = data;
+            break;
+        }
+      }
+      this._fb = fb;
   }
+
+  set recognising(val){
+    this.gestureIcon.toggleAttribute("on", val == "GestureDetection");
+    this.aslIcon.toggleAttribute("on", val == "ASLDetection");
+    if (val !== null) Webcam.startProcessing("gestures");
+    else Webcam.stopProcessing("gestures");
+    this._recognising = val;
+  }
+
   get recognising(){
     return this._recognising;
   }
 
-  set firebaseFrame(fb) {
-    this._fb = fb;
-    fb.onChildAdded(null, (value, path) => {
-      let {user, type} = value;
-      if (user != fb.uid) {
-        if (type == "raiseHand") {
-          this.showRaisedHand(false);
-        } else if (type === "lower"){
-          this.showRaisedHand(false, "")
-        } else {
-          this.animateEmoji(type);
-        }
-      } else {
-        if (type !== "raiseHand") {
-          setTimeout(() => {
-            fb.set(path, null)
-          }, 3000);
-        }
-      }
-    })
-  }
-  
   get firebaseFrame(){
     return this._fb;
   }
@@ -292,18 +533,9 @@ class EmojiReactions extends SvgPlus {
     this.shadowRoot.adoptedStyleSheets = [await stylesPromise]
   }
 
-
   show() {
     this.emojiList.shown = true;
-    // this.emojiSettings.shown = false;
   }
-
-  showSettings(){
-    this.emojiSettings.shown = true;
-    this.emojiList.shown = false;
-
-  }
-
 
   animateEmoji(type) {
     // place the element inside the container
@@ -345,58 +577,45 @@ class EmojiReactions extends SvgPlus {
      animation.onfinish = () => emojiEl.remove();
   }
 
-
-  showRaisedHand(isMe, value = `<span style="padding: 0 0.2em; font-size: 2em">🤚</span>`){
+  showRaisedHand(isMe, raised){
+    let value = raised ? `<span style="padding: 0 0.2em; font-size: 2em">🤚</span>` : ""
+    if (isMe) {
+      this.raisedIcon.innerHTML = raised ? "Lower Hand" : "Raise Hand 🤚";
+      this.raised = raised;
+    }
     let sview = document.querySelector("session-view");
     sview.setIcon(value, isMe);
+
   }
 
-
-  raiseHand() {
+  raiseHand(toggle = true) {
     const {firebaseFrame} = this;
-    if (this.raised != null)  {
-
-      this.showRaisedHand(true, "");
-      this.raisedIcon.innerHTML = "Raise Hand 🤚"
-
-      if (firebaseFrame) {
-        firebaseFrame.set(this.raised, null)
-        let pref = firebaseFrame.push(null);
-        firebaseFrame.set(pref, {
-          user: firebaseFrame.uid,
-          type: "lower",
-        })
+    if (this.raised)  {
+      if (toggle) {
+        this.showRaisedHand(true, "");
+        if (firebaseFrame) {
+          firebaseFrame.lowerHand();
+        }
       }
-      this.raised = null;
     } else {
-      this.raised = true;
       this.showRaisedHand(true);
-      this.raisedIcon.innerHTML = "Lower Hand"
       if (firebaseFrame) {
-        let pref = firebaseFrame.push(null);
-        this.raised = pref;
-        firebaseFrame.set(pref, {
-          user: firebaseFrame.uid,
-          type: "raiseHand",
-        })
+        firebaseFrame.raiseHand();
       }
     }
   }
-
 
   handleEmojiClick(type) {
     // get emoji from clicked element
     this.animateEmoji(type);
     const {firebaseFrame} = this;
     if (firebaseFrame) {
-      let pref = firebaseFrame.push(null);
-      firebaseFrame.set(pref, {
-        user: firebaseFrame.uid,
-        type: type,
-      })
+      firebaseFrame.sendEmote(type);
     }
   }
 }
+
+
 
 export {EmojiReactions}
   

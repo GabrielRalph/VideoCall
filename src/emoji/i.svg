@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 7 7">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2 {
+        stroke-width: .6px;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        stroke: #231f20;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .cls-2, .cls-3 {
+        fill: none;
+      }
+
+      .cls-3 {
+        stroke-width: 2px;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.2, SVG Export Plug-In . SVG Version: 1.2.0 Build 154)  -->
+  <g>
+    <g id="Layer_1">
+      <circle class="cls-3" r="5"/>
+      <g>
+        <polygon class="cls-1" points="-.91 -1.38 2.28 -1.38 2.28 1.38 -.91 1.38 -2.28 0 -.91 -1.38"/>
+        <g>
+          <line class="cls-2" x1="1.07" y1="-.55" x2="-.04" y2=".55"/>
+          <line class="cls-2" x1="-.04" y1="-.55" x2="1.07" y2=".55"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

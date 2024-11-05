@@ -1,5 +1,4 @@
 import {SvgPlus, Vector, parseVector} from "./4.js"
-
 function pow(number, ind) {return Math.pow(number, ind)}
 function isNonNaNVector(v) {
   return (v instanceof Vector && !v.isNaN);
@@ -406,6 +405,18 @@ class LinkList{
 }
 
 const CORNER_THRESHOLD = 20;//deg
+const CMDS = {
+  "Z": 0,
+  "M": 2,
+  "L": 2,
+  "T": 2,
+  "C": 6,
+  "H": 1,
+  "V": 1,
+  "S": 4,
+  "Q": 4,
+  "A": 7,
+}
 class CPoint extends LinkItem{
   constructor(string){
     super();
@@ -715,17 +726,9 @@ class CPoint extends LinkItem{
   static isType(type) {
     return isNonEmptyString(type) && type.toUpperCase() in CPoint.CMDS;
   }
-  static CMDS = {
-    "Z": 0,
-    "M": 2,
-    "L": 2,
-    "T": 2,
-    "C": 6,
-    "H": 1,
-    "V": 1,
-    "S": 4,
-    "Q": 4,
-    "A": 7,
+
+  static get CMDS() {
+    return CMDS
   }
 }
 

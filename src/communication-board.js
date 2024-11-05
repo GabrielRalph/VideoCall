@@ -2,7 +2,7 @@ import { SvgPlus, Vector } from "./SvgPlus/4.js";
 import {HideShow, Slider} from "./Utilities/basic-ui.js"
 import {delay} from "./Utilities/usefull-funcs.js"
 import {Icons} from "./Utilities/icons.js"
-
+import { FirebaseFrame } from "./Firebase/rtc-signaler.js";
 import { addAppDatabase, getUserType, addStateListener} from "./WebRTC/webrtc.js"
 
 import {
@@ -13,6 +13,66 @@ import {
   ZipReader,
   ZipWriter,
 } from "https://deno.land/x/zipjs/index.js";
+
+const myVoices = [
+  0,
+  1,
+  18,
+  118,
+]
+
+const sync = window.speechSynthesis;
+let canSpeak = false;
+let selectedVoice = null;
+let voicesList = [];
+
+async function load(){
+  if (typeof sync !== "undefined") {
+    canSpeak = true;
+    return new Promise((resolve, reject) => {
+      sync.onvoiceschanged = () => {
+        voicesList = sync.getVoices();
+        selectedVoice = voicesList[0];
+        resolve()
+      }
+    })
+  }
+}
+let voicesPromise = load();
+
+function selectVoice(index) {
+  let voice = getVoice(index);
+  if (voice != null) {
+    selectedVoice = voice;
+  }
+}
+function getVoice(index){
+  let voice = null;
+  if (voicesList.length > 0 && index >= 0 && index <= voicesList.length) {
+    voice = voicesList[index];
+  }
+  return voice;
+}
+window.selectVoice = selectVoice;
+window.getVoice = getVoice;
+
+
+async function speak(text){
+  if (canSpeak) {
+    sync.cancel();
+    const utterThis = new SpeechSynthesisUtterance(text);
+    utterThis.voice = selectedVoice;
+    utterThis.onerror = (e) => {console.log(e);}
+    await new Promise((resolve, reject) => {
+      utterThis.onend = resolve
+      sync.speak(utterThis);
+    })
+  }
+}
+window.speak = speak;
+
+
+
 
 
 const GridTemplate = {
@@ -121,9 +181,6 @@ async function fetchGrid(url) {
   return grid;
 }
 
-
-
-
 async function openGrid(){
   let file = await new Promise((resolve, reject) => {
     let input = new SvgPlus("input");
@@ -190,345 +247,342 @@ const CommunicationGrid = [
     },
 ]
   
-  class CommunicationIcon extends SvgPlus {
-    constructor(icon, board){
-      super('communication-icon');
+class CommunicationIcon extends SvgPlus {
+  constructor(icon, board){
+    super('communication-icon');
 
-      this.board = board;
+    this.board = board;
 
-      this.name = icon.name;
-      this.utteranceText = icon.utterance ? icon.utterance : icon.name;
-      let rel = this.createChild("div");
-      this.styles = {
-        background: icon.color ? icon.color : ""
-      }
-
-      rel.createChild("div", {content: icon.name})
-      if (icon.img) {
-        rel.createChild("div", {class: "image", styles: {"background-image": `url(${icon.img})`}});
-      }
-  
-      this.svg = this.createChild("svg", {class: "load", viewBox: "-7 -7 14 14"});
-      this.path = this.svg.createChild("path");
-      this.progress = 0;
-      this.update();
+    this.name = icon.name;
+    this.utteranceText = icon.utterance ? icon.utterance : icon.name;
+    let rel = this.createChild("div");
+    this.styles = {
+      background: icon.color ? icon.color : ""
     }
 
-
-    get dwellTime(){
-      return this.board.dwellTime;
+    rel.createChild("div", {content: icon.name})
+    if (icon.img) {
+      rel.createChild("div", {class: "image", styles: {"background-image": `url(${icon.img})`}});
     }
 
-    get dwellRelease(){
-      return this.board.dwellRelease;
-    }
-    
-
-    onclick(){this.speak()}
-  
-    async update() {
-      let lastt = performance.now();
-      while(true) {
-        await delay();
-
-          let t = performance.now();
-          let dt = (t - lastt) / 1000; // seconds
-          let dp = this.over ? dt / this.dwellTime : -dt / this.dwellRelease;
-          
-          this.progress += dp;
-          lastt = t;
-      }
-    }
-
-
-    set hover(bool){
-      this.over = bool
-      this.toggleAttribute("hover", bool);
-    }
-   
-  
-    set progress(num) {
-      if (num > 1) num = 1;
-      if (num < 0) num = 0;
-      let angle = Math.PI * 2 * (1 - num)
-      let p1 = new Vector(0, 5);
-      let p2 = p1.rotate(angle);
-      if (num == 1 && this._progress < 1) {
-        this.speak();
-      }
-      if (num > 0 && num < 1) {
-        this.path.props = {d: `M${p1}A5,5,1,${angle > Math.PI ? 0 : 1},0,${p2}`};
-      } else if (num == 1) {
-        this.path.props = {d: `M0,5A5,5,0,0,0,0,-5A5,5,0,0,0,0,5`}
-      }else {
-        this.path.props = {d: ""};
-      }
-      this._progress = num;
-    }
-    get progress(){
-      return this._progress;
-    }
-  
-    async speak(){
-      if (!this.speaking) {
-        this.speaking = true;
-        let sync = window.speechSynthesis;
-        const utterThis = new SpeechSynthesisUtterance(this.utteranceText);
-        utterThis.voice = sync.getVoices()[0];
-        await new Promise((resolve, reject) => {
-          utterThis.onend = resolve
-          sync.speak(utterThis);
-        })
-        this.speaking = false;
-      }
-    }
+    this.svg = this.createChild("svg", {class: "load", viewBox: "-7 -7 14 14"});
+    this.path = this.svg.createChild("path");
+    this.progress = 0;
+    this.update();
   }
-  export class CommunicationBoard extends SvgPlus {
-    constructor(){
-      super('communication-board');
-      this._shown = false;
-      this.events = {
-        // contextmenu: (e) => {
-        //   e.preventDefault();
-        //   this.openGrid();
-        // }
-      }
-      this.icon = this.createChild(HideShow, {
-        class: "coms-icon icon",
-        content: Icons.arrow,
-        events: {
-          click: () => {
-            this.show(!this.shown);
-          }
-        }
-      }, "div");
-      this.buffer = [];
+
+
+  get dwellTime(){
+    return this.board.dwellTime;
+  }
+
+  get dwellRelease(){
+    return this.board.dwellRelease;
+  }
   
-      this.icon.children[0].style.transform = "scaleX(-1)"
-  
-      this.content = this.createChild("div", {
-        class: "coms-content",
-      })
-  
-      window.addEventListener("mousemove", (e) => {
-        this.eyePosition = new Vector(e);
-      })
-      window.addEventListener("mouseleave", () => {
-        this.eyePosition = null;
-      })
-  
-      this.renderGrid();
-      this.sprogress = 0;
-      this.updateProgress();
 
-      this._dwellTime = 0.7;
-      this._dwellRelease = 1;
+  onclick(){this.speak()}
 
-      addAppDatabase("com-board", this);
-      addStateListener(this);
-    }
+  async update() {
+    let lastt = performance.now();
+    while(true) {
+      await delay();
 
-    initialise(){
-      if (!this.init) {
-        this.init = true;
-        console.log("init");
-        this.onValue("shown", (shown) => {
-          console.log("communication-board: shown", shown);
-          this.show(shown);
-        });
-
-        this.onValue("dwellTime", (time) => {
-          if (time != null) {
-            this._dwellTime = time;
-            this.setDwellTime(time);
-          }
-        });
-        this.onValue("dwellRelease", (time) => {
-          if (time != null) {
-            this._dwellRelease = time;
-          }
-        })
-      }
-    }
-
-
-    set dwellTime(num){
-      this.set("dwellTime", num);
-      this._dwellTime = num;
-    }
-    get dwellTime(){
-      return this._dwellTime
-    }
-
-    set dwellRelease(num){
-      this._dwellRelease = num;
-    }
-    get dwellRelease(){
-      return this._dwellRelease;
-    }
-
-    set state(state){
-      if (state) {
-        this.initialise()
-      }
-    }
-  
-    /** @param {Vector} e */
-    set eyePosition(e) {
-      // horver icon if shown
-      if (this.shown) {
-        let item = this.getItemAtVector(e);
-        for (let i of this.content.children) i.hover = false;
+        let t = performance.now();
+        let dt = (t - lastt) / 1000; // seconds
+        let dp = this.over ? dt / this.dwellTime : -dt / this.dwellRelease;
         
-        if (item != null) {
-          item.hover = true;
-        }
-      } 
-
-      this.onVector(e, true);
-    }
-  
-    getItemAtVector(v) {
-      let res = null;
-      for (let item of this.content.children) {
-        let [pos, size] = item.bbox;
-        if (v.x > pos.x && v.x < pos.x + size.x && v.y > pos.y && v.y < pos.y + size.y) {
-          res = item;
-        }
-      }
-      return res;
-    }
-
-    makeSettings(){
-    let dwell = new SvgPlus("div");
-    dwell.createChild("b", {content: "Dwell Time"})
-    let r = dwell.createChild("div", {styles: {display: "flex", "align-items": "center", "flex-direction": "row-reverse"}})
-    let ts = r.createChild("span", {content: "0.7s", styles: {"user-select": "none", width: "2em"}});
-    let dwellTime = r.createChild(Slider, {
-      events: {
-        change: () => {
-          let t = dwellTime.value * 2.7 + 0.3;
-          this.dwellTime = t
-          ts.innerHTML = Math.round(t*10)/10 + "s";
-        }
-      }
-    });
-
-    this.setDwellTime = (t) => {
-      dwellTime.value = (t-0.3)/2.7;
-      ts.innerHTML = Math.round(t*10)/10 + "s";
-    }
-
-    this.setDwellTime(0.7);
-
-    return dwell;
-    }
-
-    async openGrid(){
-      let grid = await openGrid();
-      await this.renderGrid(grid)
-      
-    }
-  
-    async renderGrid(grid = CommunicationGrid, size = 3){
-      grid = await gridPromise;
-      let n = grid.length;
-      let rows = Math.ceil(n / size);
-      this.content.styles = {
-        "grid-template-columns":(new Array(size)).fill("1fr").join(" "),
-        "grid-template-rows": (new Array(rows)).fill("1fr").join(" ")
-      }
-      this.content.innerHTML = "";
-      grid.map((icon, i) => {
-        this.content.createChild(CommunicationIcon, {
-          styles: {
-            "grid-column": 1+i%size,
-          }
-        }, icon, this)
-      })
-    }
-  
-    async show(bool) {
-      console.log();
-      if (typeof bool === "boolean" && bool != this.shown && !this._showing) {
-        this._showing = true;
-        this._shown = bool;
-        await this.waveTransition((t) => {
-          this.styles = {"--slide": t}
-        }, 350, bool);
-        this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
-        this._showing = false;
-      }
-    }
-
-    get shown(){
-      return this._shown;
-    }
-  
-  
-    set sprogress(val) {
-      if (this._showing) return;
-      if (val > 1) val = 1;
-      if (val < 0) val = 0;
-      
-      if (this.sprogress < 1 && val >= 1) {
-        val = 0;
-        this.show(!this.shown);
-      }
-      this._sprogress = val;
-    }
-
-    get sprogress(){
-      return this._sprogress;
-    }
-  
-    async updateProgress(){
-      let t0 = performance.now();
-      
-      while(true) {
-        let tnow = performance.now();
-        let dt = (tnow - t0)/1000;
-        t0 = tnow;
-
-        let over = this.isOver;
-        if (over || this.shown) this.icon.show();
-        else this.icon.hide();
-
-        let dp = dt / (!over ? -this.dwellRelease : this.dwellTime);
-        if (Number.isNaN(dp)) dp = 0;
-        this.sprogress += dp;
-        await delay();
-      }
-    }
-  
-    get iconCenter(){
-      let center = new Vector();
-      let parent = this.offsetParent;
-      if (parent != null && Array.isArray(parent.bbox)) {
-        let [origin, size] = parent.bbox;
-        if (!this.shown) {
-          center = origin;
-        } else {
-          center = origin.addH(size.x);
-        }
-      }
-      return center;
-    }
-
-
-    get isOver(){
-      let {eyeVector, iconCenter} = this;
-      let over = false;
-      if (eyeVector instanceof Vector) {
-          over = eyeVector.dist(iconCenter) < 100;
-      }
-
-      return over;
-    }
-  
-    async onVector(v, isEye = false) {
-       this.eyeVector = v;
+        this.progress += dp;
+        lastt = t;
     }
   }
+
+
+  set hover(bool){
+    this.over = bool
+    this.toggleAttribute("hover", bool);
+  }
   
-  
+
+  set progress(num) {
+    if (num > 1) num = 1;
+    if (num < 0) num = 0;
+    let angle = Math.PI * 2 * (1 - num)
+    let p1 = new Vector(0, 5);
+    let p2 = p1.rotate(angle);
+    if (num == 1 && this._progress < 1) {
+      this.speak();
+    }
+    if (num > 0 && num < 1) {
+      this.path.props = {d: `M${p1}A5,5,1,${angle > Math.PI ? 0 : 1},0,${p2}`};
+    } else if (num == 1) {
+      this.path.props = {d: `M0,5A5,5,0,0,0,0,-5A5,5,0,0,0,0,5`}
+    }else {
+      this.path.props = {d: ""};
+    }
+    this._progress = num;
+  }
+  get progress(){
+    return this._progress;
+  }
+
+  async speak(){
+    if (!this.speaking) {
+      this.speaking = true;
+      await speak(this.utteranceText)
+      this.speaking = false;
+    }
+  }
+}
+
+export class CommunicationBoard extends SvgPlus {
+  constructor(){
+    super('communication-board');
+    this._shown = false;
+    this.events = {
+      // contextmenu: (e) => {
+      //   e.preventDefault();
+      //   this.openGrid();
+      // }
+    }
+    this.icon = this.createChild(HideShow, {
+      class: "coms-icon icon",
+      content: Icons.arrow,
+      events: {
+        click: () => {
+          let shown = !this.shown
+          this.show(shown);
+          this.set("shown", shown)
+        }
+      }
+    }, "div");
+    this.buffer = [];
+
+    this.icon.children[0].style.transform = "scaleX(-1)"
+
+    this.content = this.createChild("div", {
+      class: "coms-content",
+    })
+
+    window.addEventListener("mousemove", (e) => {
+      this.eyePosition = new Vector(e);
+    })
+    window.addEventListener("mouseleave", () => {
+      this.eyePosition = null;
+    })
+
+    this.renderGrid();
+    this.sprogress = 0;
+    this.updateProgress();
+
+    this._dwellTime = 0.7;
+    this._dwellRelease = 1;
+
+    addAppDatabase("com-board", this);
+    addStateListener(this);
+  }
+
+  initialise(){
+    if (!this.init) {
+      this.init = true;
+      console.log("init");
+      this.onValue("shown", (shown) => {
+        this.show(shown);
+      });
+
+      this.onValue("dwellTime", (time) => {
+        if (time != null) {
+          this._dwellTime = time;
+          this.setDwellTime(time);
+        }
+      });
+      this.onValue("dwellRelease", (time) => {
+        if (time != null) {
+          this._dwellRelease = time;
+        }
+      })
+    }
+  }
+
+
+  set dwellTime(num){
+    this.set("dwellTime", num);
+    this._dwellTime = num;
+  }
+  get dwellTime(){
+    return this._dwellTime
+  }
+
+  set dwellRelease(num){
+    this._dwellRelease = num;
+  }
+  get dwellRelease(){
+    return this._dwellRelease;
+  }
+
+  set state(state){
+    if (state) {
+      this.initialise()
+    }
+  }
+
+  /** @param {Vector} e */
+  set eyePosition(e) {
+    // horver icon if shown
+    if (this.shown) {
+      let item = this.getItemAtVector(e);
+      for (let i of this.content.children) i.hover = false;
+      
+      if (item != null) {
+        item.hover = true;
+      }
+    } 
+
+    this.onVector(e, true);
+  }
+
+  getItemAtVector(v) {
+    let res = null;
+    for (let item of this.content.children) {
+      let [pos, size] = item.bbox;
+      if (v.x > pos.x && v.x < pos.x + size.x && v.y > pos.y && v.y < pos.y + size.y) {
+        res = item;
+      }
+    }
+    return res;
+  }
+
+  makeSettings(){
+  let dwell = new SvgPlus("div");
+  dwell.createChild("b", {content: "Dwell Time"})
+  let r = dwell.createChild("div", {styles: {display: "flex", "align-items": "center", "flex-direction": "row-reverse"}})
+  let ts = r.createChild("span", {content: "0.7s", styles: {"user-select": "none", width: "2em"}});
+  let dwellTime = r.createChild(Slider, {
+    events: {
+      change: () => {
+        let t = dwellTime.value * 2.7 + 0.3;
+        this.dwellTime = t
+        ts.innerHTML = Math.round(t*10)/10 + "s";
+      }
+    }
+  });
+
+  this.setDwellTime = (t) => {
+    dwellTime.value = (t-0.3)/2.7;
+    ts.innerHTML = Math.round(t*10)/10 + "s";
+  }
+
+  this.setDwellTime(0.7);
+
+  return dwell;
+  }
+
+  async openGrid(){
+    let grid = await openGrid();
+    await this.renderGrid(grid)
+    
+  }
+
+  async renderGrid(grid = CommunicationGrid, size = 3){
+    grid = await gridPromise;
+    let n = grid.length;
+    let rows = Math.ceil(n / size);
+    this.content.styles = {
+      "grid-template-columns":(new Array(size)).fill("1fr").join(" "),
+      "grid-template-rows": (new Array(rows)).fill("1fr").join(" ")
+    }
+    this.content.innerHTML = "";
+    grid.map((icon, i) => {
+      this.content.createChild(CommunicationIcon, {
+        styles: {
+          "grid-column": 1+i%size,
+        }
+      }, icon, this)
+    })
+  }
+
+  async show(bool) {
+    this.sprogress = 0;
+    if (typeof bool === "boolean" && bool != this.shown && !this._showing) {
+      this._showing = true;
+      this._shown = bool;
+      await this.waveTransition((t) => {
+        this.styles = {"--slide": t}
+      }, 350, bool);
+      this.icon.children[0].style.transform = bool ? null : "scaleX(-1)"
+      this._showing = false;
+    }
+  }
+
+  get shown(){
+    return this._shown;
+  }
+
+
+  set sprogress(val) {
+    if (this._showing) return;
+    if (val > 1) val = 1;
+    if (val < 0) val = 0;
+    
+    if (this.sprogress < 1 && val >= 1) {
+      val = 0;
+      let shown = !this.shown
+      this.show(shown);
+      this.set("shown", shown)
+    }
+    this._sprogress = val;
+  }
+
+  get sprogress(){
+    return this._sprogress;
+  }
+
+  async updateProgress(){
+    let t0 = performance.now();
+    
+    while(true) {
+      let tnow = performance.now();
+      let dt = (tnow - t0)/1000;
+      t0 = tnow;
+
+      let over = this.isOver;
+      if (over || this.shown) {
+        this.icon.show();
+      } else this.icon.hide();
+
+      let dp = dt / (!over ? -this.dwellRelease : this.dwellTime);
+      if (Number.isNaN(dp)) dp = 0;
+      this.sprogress += dp;
+      await delay();
+    }
+  }
+
+  get iconCenter(){
+    let center = new Vector();
+    let parent = this.offsetParent;
+    if (parent != null && Array.isArray(parent.bbox)) {
+      let [origin, size] = parent.bbox;
+      if (!this.shown) {
+        center = origin;
+      } else {
+        center = origin.addH(size.x);
+      }
+    }
+    return center;
+  }
+
+
+  get isOver(){
+    let {eyeVector, iconCenter} = this;
+    let over = false;
+    if (eyeVector instanceof Vector) {
+        over = eyeVector.dist(iconCenter) < 100;
+    }
+
+    return over;
+  }
+
+  async onVector(v, isEye = false) {
+      this.eyeVector = v;
+  }
+}

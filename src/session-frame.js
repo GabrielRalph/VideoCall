@@ -479,6 +479,7 @@ class AppsPanel extends SvgPlus {
   }
 }
 
+
 /** 
  * 
  *  Settings Panel
@@ -513,8 +514,8 @@ class SettingsPanel extends SvgPlus {
 
     this.main.appendChild(sessionFrame().communicationBoard.makeSettings());
     this.mouseSelection = this.main.createChild(MouseSelection);
+    this.captionSettings = this.main.createChild(CC.CaptionSettings);
     this.devicesList = this.main.createChild("div", { class: "device" });
-
 
   }
 
@@ -728,12 +729,9 @@ class SessionView extends HideShow {
     if (!this.whiteboard._fb) {
       console.log("initialiseing white board");
       let fb = new WhiteboardFirebaseFrame("whiteboard", this.whiteboard);
-      console.log(fb.appRef(null));
+     
       this.whiteboard.svgView.viewBoxX.displayPixelSize();
       this.whiteboard._fb = fb;
-
-      this.emojiReactions.firebaseFrame = new FirebaseFrame("emoji");
-      CC.setFBFrame(new FirebaseFrame("cc"));
     }
   }
 

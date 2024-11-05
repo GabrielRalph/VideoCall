@@ -22,25 +22,67 @@
     overflow: hidden;
 
   }
+  .asl-text-box {
+    position: absolute;
+    left: 50%;
+    background-color: var(--wc2);
+    border-radius: 0.5em;
+    transform: translateX(-50%);
+    color: white;
+    top:  calc(var(--widget-size) + 6em);
+    transition: 0.3s ease opacity;
+    opacity: 1;
+    pointer-events: none;
+    padding: 0.5em;
+    display: flex;
+    flex-direction: column;
+    
+  }
+  .asl-text-box > * {
+    font-size: calc(1em * var(--captions-font-size) / 14);
+  }
+  .me {
+    color: var(--my-captions-color);
+  }
+  .them {
+    color: var(--their-captions-color);
+  }
+ 
+
   .charge-circle {
     width: 4em;
     position: absolute;
     left: 50%;
+    background-color: var(--wc);
+    border-radius: 3em;
     transform: translateX(-50%);
-    bottom:  calc((var(--tool-bar-height)*2 + 2* var(--br) + 2* var(--sp)));
-
+    top:  calc(var(--widget-size) + 1em);
+    transition: 0.3s ease opacity;
+    opacity: 1;
+    pointer-events: none;
   }
-  .charge-circle path {
+  .charge-circle[hide], .asl-text-box[hide] {
+    opacity: 0;
+  }
+
+  .charge-circle g > * {
+    stroke-width: 0.5;
+    stroke-linecap:round;
+    stroke-linejoin:round;
     stroke: white;
-    stroke-width: 3;
     fill: none;
   }
-  .icon {display: flex;
-padding-right: 0.3em;}
-  .icon svg {
-    width: 1em;
-    fill: rgb(32, 231, 32);
+
+  .charge-circle > path {
+    stroke: white;
+    stroke-width: 2;
+    fill: none;
   }
+  .charge-circle text {
+    fill: white;
+  }
+
+
 
   .emoji-list {
     opacity: 0;
@@ -112,6 +154,6 @@ padding-right: 0.3em;}
     will-change: transform;
   }
 
-  .btn.gesture-icon[on] {
+  .btn[on] {
     background: rgb(39 152 39);
   }

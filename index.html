@@ -9,33 +9,46 @@
 
     </div>
   </body>
+  <script type = "module">
+    // import {SvgPlus} from "./src/SvgPlus/4.js"
+    // let hello = new SvgPlus("div")
+    // hello.innerHTML = "heellloo"
+    // document.body.appendChild(hello)
+    // alert("here")
+    // window.onerror = (e) => {
+    //   alert(e)
+    // }
+  </script>
 
   <script type = "module">
-    import {WaveyCircleLoader} from "./src/Utilities/animation-icons.js"
-    import * as WebRTC from "./src/WebRTC/webrtc.js"
-
-    // Make and show loader icon
-    let loader = new WaveyCircleLoader()
-    loader.align = "center";
-    document.body.appendChild(loader);
-    await loader.show();
-
-    // Initialise firebase
-    await WebRTC.load(true);
-
-    // Hide Loader
-    await loader.hide();
-    let cntr = document.getElementById("cntr")
-    cntr.innerHTML = `<div class = "btn">
-      Create Session
-    </div>`
-    
-    // Create Session key when clicked
-    cntr.onclick = async () => {
-      let key = await WebRTC.makeSession();
-      console.log(key);
-      window.location = "Session/?"+key;
+    class A {
+      point = 123
+      constructor() {
+        alert(this.point)
+      }
     }
+    new A()
+    // import * as WebRTC from "./src/WebRTC/webrtc.js"
+    // Make and show loader icon
+    // alert("here-x")
+
+  
+    // Initialise firebase
+    // await WebRTC.load(true);
+
+    // // Hide Loader
+    // await loader.hide();
+    // let cntr = document.getElementById("cntr")
+    // cntr.innerHTML = `<div class = "btn">
+    //   Create Session
+    // </div>`
+    
+    // // Create Session key when clicked
+    // cntr.onclick = async () => {
+    //   let key = await WebRTC.makeSession();
+    //   console.log(key);
+    //   window.location = "Session/?"+key;
+    // }
 
   </script>
   <style>

@@ -12,6 +12,9 @@
     --side-width: 15vw;
     --side-offset: 0px;
     
+    --my-captions-color: rgb(255, 215, 0);
+    --their-captions-color: white;
+    --captions-font-size: 18;
     
     --ic1: #cac9c4;
     --ic2: white;
@@ -1065,7 +1068,8 @@ pdf-viewer {
         padding: 0.3em;
         border-radius: 0.3em;
         background: var(--wc2);
-        color: rgb(255, 215, 0);
+        color: var(--my-captions-color);
+        font-size: calc(1em * var(--captions-font-size) / 14);
         opacity: 0;
         pointer-events: none;
         transform: translate(-50%);
@@ -1080,7 +1084,56 @@ pdf-viewer {
     }
 
     .closed-captions .other {
-        color: white;
+        color: var(--their-captions-color);
+    }
+
+    settings-panel > .main-items .caption-settings * {
+        padding: 0;
+    }
+    .caption-settings {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5em;
+    }
+    .caption-settings > * {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3em;
+    }
+
+
+    .caption-settings .font-colors > div:last-child {
+        display: flex;
+        gap: 0.3em
+    }
+    .caption-settings .font-colors > div:last-child > div {
+        width: 1.75em;
+        height: 1.75em;
+        border-radius: 2em;
+        border: 1.5px solid rgb(51, 50, 50);
+    }
+    .caption-settings .font-colors > div:last-child > div[selected] {
+        border: 1.5px solid rgb(3, 108, 244);
+        box-shadow: 0px 0px 3px rgb(3, 108, 244);
+    }
+
+
+    .caption-settings .font-size > div:last-child {
+        display: flex;
+    }
+    .caption-settings .font-size > div:last-child > div:first-child {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }.caption-settings .font-size > div:last-child > div:last-child {
+        width: 2em;
+    }
+    .caption-settings .font-size > div:last-child > div:first-child > div:last-child {
+        display: flex;
+        justify-content: space-between;
+    }
+    .caption-settings .font-size > div:last-child > div:first-child > div:last-child > div{
+        padding: 0 0.55em;
     }
 
 

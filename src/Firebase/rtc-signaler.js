@@ -1,14 +1,16 @@
-import {set, get, ref,update, push, child, getDB, getUID, onChildAdded, onChildRemoved, onChildChanged, onValue, callFunction, uploadFileToCloud} from "./firebase-basic.js"
+import {set, get, ref,update, push, child, getDB, getUID, onChildAdded, onChildRemoved, onChildChanged, onValue, callFunction, uploadFileToCloud, initialise} from "./firebase-basic.js"
 
 const SESSION_ROOT_KEY = "sessions";
 
 let UserType = null;
+let hasJoined = false;
 let CurrentSessionKey = null;
 let CandidateListener = null;
 let Listening = null;
 let DescriptionListener = null;
 let HostUIDListener = null;
 let FieldListeners = [];
+let FirebaseFrames = [];
 
 let TickIntervalID = null;
 let messageHandler = () => {};
@@ -233,6 +235,11 @@ export async function join(key, onmessage, forceParticipant = false) {
   }
   
   addListeners(key, userType);
+  
+  hasJoined = true;
+  for (let fframe of FirebaseFrames) {
+    fframe.onconnect();
+  }
 
   return {iceServers, initialState};
 }
@@ -241,6 +248,8 @@ export async function join(key, onmessage, forceParticipant = false) {
 export function leave(){
   UserType = null;
   CurrentSessionKey = null;
+  for (let fframe in FirebaseFrames) fframe.close();
+  hasJoined = false;
 }
 
 /* Send WebRTC descriptions or candiates accros signaling channel */
@@ -302,7 +311,6 @@ export function getKey(){
 export function getUserType(){
   return UserType;
 }
-
 
 
 /**
@@ -392,10 +400,20 @@ export class FirebaseFrame {
         return r;
       }
       this.listeners = new Set();
+      FirebaseFrames.push(this);
+      if (hasJoined) {
+        this.onconnect();
+      }
   }
 
   logPath() {
       console.log(this.appRef("hello"));
+  }
+
+  /**
+   * Called when firebase is connected to a session
+   */
+  onconnect(){
   }
   
 
@@ -405,7 +423,10 @@ export class FirebaseFrame {
    *                      path is provided then the app's root directory is fetched.
    * @return {Promise<DataValue>} returns a promise that resolves the value in the database.
    */
-  async get(path){ return (await get(this.appRef(path))).val()}
+  async get(path){ 
+    if (hasJoined) (await get(this.appRef(path))).val()
+    else throw "Session has not connected"
+  }
 
 
   /** set, sets a value in the apps database at the path specified.
@@ -413,7 +434,10 @@ export class FirebaseFrame {
    * @return {Promise<void>} returns a promise that resolves nothing once setting has been completed.
    * 
    */
-  async set(path, value) {await set(this.appRef(path), value)}
+  async set(path, value) {
+    if (hasJoined) await set(this.appRef(path), value)
+    else throw "Session has not connected"
+  }
 
   /** push, gets a new push key for the path at the database
    * 
@@ -421,8 +445,12 @@ export class FirebaseFrame {
    * @return {String} returns the key to push a new value.
    */
   push(path) {
+    if (hasJoined) {
       let pr = push(this.appRef(path));
       return pr.key;
+    } else {
+      throw "Session has not connected"
+    }
   }
 
   /** An onValue event will trigger once with the initial data stored at this location, and then trigger
@@ -435,17 +463,21 @@ export class FirebaseFrame {
    *                                                        and for every change made.
    */
   onValue(path, cb) {
-      let close = null;
-      if (cb instanceof Function) {
-          close = onValue(this.appRef(path), (sc) => cb(sc.val()));
-          this.listeners.add(close)
+    if (hasJoined) {
+        let close = null;
+        if (cb instanceof Function) {
+            close = onValue(this.appRef(path), (sc) => cb(sc.val()));
+            this.listeners.add(close)
+        } else {
+            throw "The callback must be a function"
+        }
+        return () => {
+            this.listeners.delete(close);
+            close();
+        };
       } else {
-          throw "The callback must be a function"
+        throw "Session has not connected"
       }
-      return () => {
-          this.listeners.delete(close);
-          close();
-      };
   }
 
   /** An onChildAdded event will be triggered once for each initial child at this location, and it will be 
@@ -458,17 +490,21 @@ export class FirebaseFrame {
    * @param {(value: DataValue, key: String, previousKey: String) => void} callback 
    */
   onChildAdded(path, cb) {
-      let close = null;
-      if (cb instanceof Function) {
-          close = onChildAdded(this.appRef(path), (sc, key) => cb(sc.val(), sc.key, key));
-          this.listeners.add(close)
+      if (hasJoined) {
+        let close = null;
+        if (cb instanceof Function) {
+            close = onChildAdded(this.appRef(path), (sc, key) => cb(sc.val(), sc.key, key));
+            this.listeners.add(close)
+        } else {
+            throw "The callback must be a function"
+        }
+        return () => {
+            this.listeners.delete(close);
+            close();
+        };
       } else {
-          throw "The callback must be a function"
+        throw "Session has not connected"
       }
-      return () => {
-          this.listeners.delete(close);
-          close();
-      };
   }
 
   /** An onChildRemoved event will be triggered once every time a child is removed. 
@@ -480,6 +516,7 @@ export class FirebaseFrame {
    * @param {(value: DataValue, key: String) => void} callback
    */
   onChildRemoved(path, cb) {
+    if (hasJoined) {
       let close = null;
       if (cb instanceof Function) {
           close = onChildRemoved(this.appRef(path), (sc) => cb(sc.val(), sc.key));
@@ -491,6 +528,9 @@ export class FirebaseFrame {
           this.listeners.delete(close);
           close();
       };
+    } else {
+      throw "Session has not connected"
+    }
   }
 
   /** An onChildChanged event will be triggered initially and when the data stored in a child 
@@ -503,17 +543,21 @@ export class FirebaseFrame {
    * @param {(value: DataValue, key: String, previousKey: String) => void} callback
    */
   onChildChanged(path, cb) {
+    if (hasJoined) {
       let close = null;
       if (cb instanceof Function) {
-          close = onChildChanged(this.appRef(path), (sc, key) => cb(sc.val(), sc.key, key));
-          this.listeners.add(close)
+        close = onChildChanged(this.appRef(path), (sc, key) => cb(sc.val(), sc.key, key));
+        this.listeners.add(close)
       } else {
-          throw "The callback must be a function"
+        throw "The callback must be a function"
       }
       return () => {
-          this.listeners.delete(close);
-          close();
+        this.listeners.delete(close);
+        close();
       };
+    } else {
+      throw "Session has not connected"
+    }
   }
 
   /** Ends all listeners and removes the app database */

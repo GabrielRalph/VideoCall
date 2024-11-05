@@ -41,27 +41,45 @@ class WaveTransition{
 
 export class Slider extends SvgPlus {
   constructor(){
-      super("svg");
-    
+      super("slider-input");
+      
       this.props = {
           styles: {
+              display: "flex",
               width: "100%",
               height: "100%",
               cursor: "pointer",
           },
-          viewBox: "0 0 40 10"
       };
-      this.createChild("path", {
+
+      this.click_box = this.createChild("div", {
+        styles: {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: "none",
+        }
+      })
+
+      let svg = this.createChild("svg", {
+        viewBox: "0 3 40 4",
+        styles: {
+          "padding": 0,
+        }
+      })
+      svg.createChild("path", {
           d: "M2,5L38,5",
           stroke: "gray",
           fill: "none",
           "stroke-linecap": "round",
-          "stroke-width": 2,
+          "stroke-width": 1,
           events: {
               click: (e) => this.selectAt(e)
           }
       })
-      this.circle = this.createChild("circle", {
+      this.circle = svg.createChild("circle", {
           cy: 5
       })
       this.r = 1.5;
@@ -69,6 +87,7 @@ export class Slider extends SvgPlus {
 
       this.addEventListener("mousedown", (e) => {
           this.mode = "grab"
+          this.click_box.styles = {"display": null}
           e.preventDefault();
       })
       this.addEventListener("mousemove", (e) => {
@@ -77,13 +96,17 @@ export class Slider extends SvgPlus {
             this.moveCursor(e);
             e.preventDefault();
           }
-
       })
+
       this.addEventListener("mouseup", (e) => {
           this.mode = "over"
+          this.click_box.styles = {"display": "none"}
+
       })
       this.addEventListener("mouseleave", (e) => {
           this.mode = null;
+          this.click_box.styles = {"display": "none"}
+
       })
 
       let next = () => {
