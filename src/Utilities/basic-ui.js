@@ -238,7 +238,7 @@ export class HideShow extends SvgPlus {
       await this._transitioning;
     }
     this._shown = !hide;
-    if (!hide) this.styles = {display: null, opacity: 0}
+    if (!hide) this.styles = {visibility: null, opacity: 0}
 
     if (!isPageHidden()){
       this._transitioning = new WaveTransition((t) => {
@@ -257,10 +257,10 @@ export class HideShow extends SvgPlus {
   set shown(value) {
     if (value) {
 			this.opacity = 1;
-      this.styles = {display: null};
+      this.styles = {visibility: null};
     } else {
 			this.opacity = 0;
-      this.styles = {display: "none"};
+      this.styles = {visibility: "hidden"};
     }
     this._shown = value;
   }

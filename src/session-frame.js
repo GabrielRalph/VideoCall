@@ -1032,7 +1032,7 @@ class SessionFrame extends SvgPlus {
   /* Broadcast mouse position relative to content if user is host.
   */
   onMouseMove(e = this.mouse_event) {
-    if (e != null && this.hasContent && this.type == "host") {
+    if (e != null && this.type == "host") {
       try {
         let mouse = new Vector(e);
         let bbox = this.referenceBBox;
