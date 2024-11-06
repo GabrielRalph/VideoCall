@@ -1080,14 +1080,18 @@ class SessionFrame extends SvgPlus {
 
       if (this.blob.shown && this._calibrating != 2 && this._calibrating != 3) {
         if (this.squidlyApp instanceof SquidlyApp) {
-          this.squidlyApp.eyeData = screen;
+          try {
+            this.squidlyApp.eyeData = screen;
+          } catch(e) {}
         }
         this.communicationBoard.eyePosition = screen;
       }
-      let [pdfPos, pdfSize] = this.referenceBBox;
-      let rel2content = screen.sub(pdfPos).div(pdfSize);
-      this.blob.position = screen.sub(this.pointers.bbox[0]);
-      WebRTC.sendData({ eye: { x: rel2content.x, y: rel2content.y } })
+      try {
+        let [pdfPos, pdfSize] = this.referenceBBox;
+        let rel2content = screen.sub(pdfPos).div(pdfSize);
+        this.blob.position = screen.sub(this.pointers.bbox[0]);
+        WebRTC.sendData({ eye: { x: rel2content.x, y: rel2content.y } })
+      } catch (e) {}
     }
 
     WebRTC.sendData({ calibrating: this._calibrating })

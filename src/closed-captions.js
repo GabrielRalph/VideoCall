@@ -147,6 +147,7 @@ export class CaptionSettings extends SvgPlus {
     }
 
     set value(value) {
+        if (value === null || typeof value !== "object") value = {}
         let oldValue = this.value;
         for (let key in oldValue) {
             if (key in value) {

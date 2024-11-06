@@ -73,8 +73,6 @@ window.speak = speak;
 
 
 
-
-
 const GridTemplate = {
   color: (val) => {
     if (!val) val = "white";
