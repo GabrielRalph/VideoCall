@@ -424,7 +424,7 @@ export class FirebaseFrame {
    * @return {Promise<DataValue>} returns a promise that resolves the value in the database.
    */
   async get(path){ 
-    if (hasJoined) (await get(this.appRef(path))).val()
+    if (hasJoined) return (await get(this.appRef(path))).val()
     else throw "Session has not connected"
   }
 

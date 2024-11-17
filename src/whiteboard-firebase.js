@@ -1,5 +1,8 @@
+// import { WhiteBoard } from "http://127.0.0.1:5501/whiteboard.js";
 import { WhiteBoard } from "https://whiteboard.w4v.es/whiteboard.js";
 import { ElementChangeEvent } from "https://whiteboard.w4v.es/Element/interface.js";
+// import { ElementChangeEvent } from "http://127.0.0.1:5501/Element/interface.js";
+
 import { FirebaseFrame } from "./Firebase/rtc-signaler.js";
 
 
@@ -62,6 +65,7 @@ class WhiteboardFirebaseFrame extends FirebaseFrame {
                     if (light === false) {
                         createdListener();
                         let cdata = await this.get(id);
+                        console.log(cdata);
                         this._onChange({
                             type: "creation",
                             data: this.fromFBData(cdata),
@@ -172,7 +176,7 @@ class WhiteboardFirebaseFrame extends FirebaseFrame {
 
     async sendChanges(){
         // for every change type and changes for that type
-        for (let type of ["creation", ...specific_change_types, "deletion"]) {
+        for (let type of [...specific_change_types,"deletion", "creation"]) {
             if (type in this.changeBuffers) {
                 for (let id in this.changeBuffers[type]) {
                     let change = this.changeBuffers[type][id];

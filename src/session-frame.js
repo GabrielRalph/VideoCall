@@ -614,6 +614,7 @@ class SessionView extends HideShow {
     this.default_view = defaultView;
 
     let wb = new WhiteBoard();
+    wb.linkToElement(contentView)
     wb.showTools = false;
     this.whiteboard = wb
     rel.appendChild(wb)

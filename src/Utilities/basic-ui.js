@@ -207,16 +207,19 @@ export class HideShow extends SvgPlus {
     this.shown = false;
   }
 
+  set _hideShowState(value){
+    this.setAttribute("hide-show", value)
+  }
+
 	set opacity(o){
-		this.props = {
-			opacity: o,
-			styles: {opacity: o}
-		}
+		this.styles = {
+      "--param-t": o
+    }
 	}
 
 	set disabled(value) {
 		this.opacity = value ? 0.5 : 1;
-		this.styles = {"pointer-events": value ? "none" : "all"}
+		this._hideShowState = value ? "disabled" : "shown"
 	}
 
   shownDecedents(value) {
@@ -238,7 +241,10 @@ export class HideShow extends SvgPlus {
       await this._transitioning;
     }
     this._shown = !hide;
-    if (!hide) this.styles = {visibility: null, opacity: 0}
+    if (!hide) {
+      this.opacity = 0;
+      this._hideShowState = "shown";
+    }
 
     if (!isPageHidden()){
       this._transitioning = new WaveTransition((t) => {
@@ -257,10 +263,10 @@ export class HideShow extends SvgPlus {
   set shown(value) {
     if (value) {
 			this.opacity = 1;
-      this.styles = {visibility: null};
+      this._hideShowState = "shown";
     } else {
 			this.opacity = 0;
-      this.styles = {visibility: "hidden"};
+      this._hideShowState = "hidden";
     }
     this._shown = value;
   }
@@ -270,6 +276,7 @@ export class HideShow extends SvgPlus {
 export class ConstantAspectRatio extends HideShow {
   constructor(el = "div", startWatch = true) {
     super(el);
+    this.toggleAttribute("constant-aspect")
     this.aspectRatio = 1;
     if (startWatch) this.watch
   }

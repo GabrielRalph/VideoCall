@@ -1052,7 +1052,7 @@ pdf-viewer {
     }
 
     calibration-frame {
-        z-index: 2000;
+        z-index: 5000;
     }
 
     white-board {
@@ -1145,4 +1145,16 @@ pdf-viewer {
         bottom: 0;
         z-index: 1012;
         pointer-events: none;
+    }
+
+
+    *[hide-show] {
+        opacity: var(--param-t);
+    }
+    *:not([constant-aspect])[hide-show = 'hidden'] {
+        display: none;
+    }
+
+    [constant-aspect][hide-show = 'hidden'] {
+        visibility: hidden;
     }

@@ -138,6 +138,7 @@ class CalibrationFrame extends HideShow {
 		let [t1, t2] = [max_time, max_time];
 		if (bbox.width > bbox.height) t2 = max_time * bbox.height / bbox.width;
 		else if (bbox.height > bbox.width) t1 = max_time * bbox.width / bbox.height;
+		await this.showMessageCountDown("Focus on the red dot<br/>as moves along on the screen.<br/>$$");
 
 		let ext = [[this.tl, this.bl, this.tr, this.br, t1], [this.tl, this.tr, this.bl, this.br, t2]];
 		for (let [pa1, pa2, pb1, pb2, time] of ext) {
