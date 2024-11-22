@@ -3,6 +3,7 @@ import { SvgResize } from "../Utilities/basic-ui.js";
 
 
 
+
   /** 
    * @typedef {(String|Array|Number|Object)} DataValue 
    * @typedef {('host'|'participant'|'both')} UserType
@@ -35,7 +36,7 @@ export class SquidlyApp{
      * @override
      * @param {Vector} eyeData
      */
-    set eyeData(eyeData){
+    setEyeData(eyeData){
     }
 
   
@@ -180,7 +181,17 @@ export class SquidlyApp{
         return "host" // "participant" , or 
     }
 
+    static get CSSStyleSheets(){
+        return this._CSSStyleSheets;
+    }
 
+    static get styleSheets() {
+        return []
+    }
+
+    static get source(){
+        return new Function('console.log(import)')
+    }
     
 }
 

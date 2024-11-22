@@ -474,7 +474,11 @@ class AppsPanel extends SvgPlus {
     this.appShown = app.sideWindow != null;
     if (app.sideWindow != null) {
       this.main.innerHTML = "";
-      this.main.appendChild(app.sideWindow);
+      let shadowContainer = this.main.createChild("div", {display: "contents"});
+      let shadow = shadowContainer.attachShadow({mode: "open"})
+      if (Array.isArray(app.constructor.CSSStyleSheets))
+        shadow.adoptedStyleSheets = app.constructor.CSSStyleSheets;
+      shadow.appendChild(app.sideWindow);
     }
   }
 }
@@ -592,6 +596,7 @@ class SessionView extends HideShow {
     this.feedback_window.align = "center";
 
     this.main_app_window = mainContentView.createChild("div", { class: "main-app-window" });
+    this.main_app_window.attachShadow({mode: "open"})
 
    
 
@@ -916,7 +921,9 @@ class SessionFrame extends SvgPlus {
             this.tool_bar.toggleAttribute("app-shown", this.apps_panel.appShown)
             let main = app.mainWindow;
             if (main !== null) {
-              this.main_app_window.appendChild(main);
+              if (Array.isArray(appClass.CSSStyleSheets))
+                this.main_app_window.shadowRoot.adoptedStyleSheets = appClass.CSSStyleSheets;
+              this.main_app_window.shadowRoot.appendChild(main);
             }
 
             this.session_view.toContentView();
@@ -944,7 +951,7 @@ class SessionFrame extends SvgPlus {
       this.hideInSideWindow("apps");
     }
     this.apps_panel.renderApps();
-    this.main_app_window.innerHTML = "";
+    this.main_app_window.shadowRoot.innerHTML = "";
     this.squidlyApp = null;
     console.log(this.hasContent);
     this.session_view.toContentView(this.hasContent);
