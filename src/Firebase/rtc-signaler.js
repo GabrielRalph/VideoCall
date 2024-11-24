@@ -406,6 +406,10 @@ export class FirebaseFrame {
       }
   }
 
+  get isConnected(){
+    return !!hasJoined;
+  }
+
   logPath() {
       console.log(this.appRef("hello"));
   }

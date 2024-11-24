@@ -146,6 +146,71 @@ async function runProcessingLoop(){
   stopCapture = false;
 }
 
+let Filter = null;
+let AudioContext = null;
+function createAudioFilteredStream(stream, bandrange = [60, 1000]){
+  if (!stream) return
+  // Separate the audio and video tracks
+  const audioTracks = stream.getAudioTracks();
+  const videoTracks = stream.getVideoTracks();
+
+  if (audioTracks.length === 0) {
+    console.warn("Error filtering audop: No audio tracks found in the stream.");
+    return;
+  }
+
+  // Create an AudioContext for processing audio
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioContext) {
+    console.warn("Audio context not found");
+    return;
+  }
+  AudioContext = audioContext;
+
+  // Create a MediaStreamSource from the audio track
+  const audioSource = audioContext.createMediaStreamSource(new MediaStream(audioTracks));
+  
+  // Create a bandpass filter
+  // Configure High-Pass Filter
+  const highPass = audioContext.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.setValueAtTime(200, audioContext.currentTime);
+
+  // Configure Low-Pass Filter
+  const lowPass = audioContext.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.setValueAtTime(3000, audioContext.currentTime);
+
+  // Configure Compressor
+  const compressor = audioContext.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(-50, audioContext.currentTime);
+  compressor.knee.setValueAtTime(40, audioContext.currentTime);
+  compressor.ratio.setValueAtTime(4, audioContext.currentTime);
+  compressor.attack.setValueAtTime(0.01, audioContext.currentTime);
+  compressor.release.setValueAtTime(0.1, audioContext.currentTime);
+
+  // Connect nodes
+  audioSource.connect(highPass);
+  highPass.connect(lowPass);
+  // lowPass.connect(compressor)
+
+  // Connect the source to the filter and then to the destination
+  const audioDestination = audioContext.createMediaStreamDestination();
+  lowPass.connect(audioDestination);
+
+  // Create a new MediaStream with the original video tracks and the filtered audio track
+  const processedStream = new MediaStream();
+  videoTracks.forEach(track => processedStream.addTrack(track)); // Add video tracks
+  audioDestination.stream.getAudioTracks().forEach(track => processedStream.addTrack(track)); // Add filtered audio track
+
+  return processedStream
+}
+
+window.adjustFilter = (mid, q) => {
+  Filter.frequency.setValueAtTime(mid, AudioContext.currentTime); 
+  Filter.Q.setValueAtTime(q, AudioContext.currentTime); 
+}
+
 // ~~~~~~~~ PUBLIC METHODS ~~~~~~~~
 
 export function setProcess(algorithm, name = "default"){
@@ -166,6 +231,7 @@ export async function startWebcam(params = camParams1){
     // Get the users video media stream
     let stream = await navigator.mediaDevices.getUserMedia( params );
     let stream2 = await navigator.mediaDevices.getUserMedia( camParams2 );
+    stream2 = createAudioFilteredStream(stream2);
     if (!stream) {
       webcam_off = false;
       throw 'no stream'

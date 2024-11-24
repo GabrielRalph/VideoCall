@@ -16,7 +16,7 @@ class FontSize extends SvgPlus {
         this.slider = ssbox.createChild(Slider, {
             events: {
                 "change": (e) => {
-                    this.display.innerHTML = this.value;
+                    this.display.innerHTML = this.display_value;
                     this.dispatchEvent(new Event("change"))
                 }
             }
@@ -29,6 +29,10 @@ class FontSize extends SvgPlus {
 
     }
 
+    get display_value(){
+        return Math.round(this.value);
+    }
+
     set value(value){
         let {maxFont, minFont} = this;
         value = value > maxFont ? maxFont : (value < minFont ? minFont : value)
@@ -37,7 +41,10 @@ class FontSize extends SvgPlus {
         this.display.innerHTML = Math.round(value);
     }
 
-    get value(){return Math.round(this.slider.value * (this.maxFont - this.minFont) + this.minFont)}
+    get value(){
+        let val = this.slider.value * (this.maxFont - this.minFont) + this.minFont;
+        return val;
+    }
     get scale(){return this.slider.value}
 
 }

@@ -283,9 +283,23 @@ class ASLTextBoxes extends SvgPlus {
   }
 
   hide(){
-    this.toggleAttribute("hide", true)
+    if (this._hidden ) return;
+    console.log("hidding text");
+    this._hidden = true;
+    this.clearHideCountdown();
+    this.toggleAttribute("hide", true);
+    this._hidding = setTimeout(() => {
+      console.log("text-cleared");
+      this.set("", true)
+      this.set("", false)
+      this.dispatchEvent(new Event("cleared"));
+      this._hidding = null;
+    }, 300)
   }
   show(){
+    if (!this._hidden) return;
+    this._hidden = false;
+    if (this._hidding) clearTimeout(this._hidding);
     this.toggleAttribute("hide", false);
     this.clearHideCountdown();
   }
@@ -297,10 +311,6 @@ class ASLTextBoxes extends SvgPlus {
     if (this.timeOutId == null) {
       this.timeOutId = setTimeout(() => {
         this.hide();
-        setTimeout(() => {
-          this.set("", true)
-          this.dispatchEvent(new Event("cleared"));
-        }, 300)
       }, this.timeOutPeriod * 1000)
     }
   }
@@ -359,7 +369,8 @@ class EmojiReactions extends SvgPlus {
     this.textBox = rel.createChild(ASLTextBoxes, {
       events: {
         cleared: () => {
-          if (this.firebaseFrame) {
+          if (this.firebaseFrame && this.firebaseFrame.isConnected) {
+            console.log("clearing asl");
             this.firebaseFrame.setASLText("");
           }
         }
@@ -491,6 +502,7 @@ class EmojiReactions extends SvgPlus {
   setupFirebase(){
     let fb = new EmojiFirebase();
       fb.onchange = (type, data) => {
+        console.log(type, data);
         switch (type) {
           case "emote": 
             this.animateEmoji(data);
@@ -502,7 +514,7 @@ class EmojiReactions extends SvgPlus {
             break;
 
           case "asl-text": 
-            this.textBox.set(data, false);
+            if (this.recognising) this.textBox.set(data, false);
             break;
 
           case "recognising": 
@@ -516,8 +528,14 @@ class EmojiReactions extends SvgPlus {
   set recognising(val){
     this.gestureIcon.toggleAttribute("on", val == "GestureDetection");
     this.aslIcon.toggleAttribute("on", val == "ASLDetection");
-    if (val !== null) Webcam.startProcessing("gestures");
-    else Webcam.stopProcessing("gestures");
+    if (val !== null) {
+      Webcam.startProcessing("gestures");
+    } else {
+
+      Webcam.stopProcessing("gestures");
+      this.textBox.hide();
+      this.emojiCharger.best = ["", 0]
+    }
     this._recognising = val;
   }
 
