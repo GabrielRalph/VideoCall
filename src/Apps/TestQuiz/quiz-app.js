@@ -24,11 +24,11 @@ class DwellIcon extends SvgPlus {
   
   
     get dwellTime(){
-      return 1
+      return 1.5
     }
   
     get dwellRelease(){
-      return 1
+      return 1.5
     }
     
   
@@ -264,7 +264,7 @@ class QuizSettings extends SvgPlus {
 class QuizGame extends SvgPlus {
     constructor(isSender){
         super("div")
-      
+        this.class = "quiz-game"
         this.innerHTML = isSender ? this.host_welcome_template : this.welcome_template
     }
 
