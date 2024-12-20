@@ -1,6 +1,7 @@
 import { SquidlyApp } from "./app-class.js";
 const APPS_FILES = [
     "https://eyepaint.squidly.com.au/index.js",
+    "https://pianotrials.squidly.com.au/index.js",
     "/TestQuiz/quiz-app.js",
     "http://127.0.0.1:5502/index.js",
 ]
